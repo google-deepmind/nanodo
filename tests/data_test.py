@@ -12,7 +12,6 @@ import grain.python as grain
 import jax
 import jax.numpy as jnp
 from nanodo import data
-from nanodo.google.configs import default
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds

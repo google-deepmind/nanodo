@@ -23,7 +23,6 @@ from nanodo import evaluate
 from nanodo import loss as loss_lib
 from nanodo import metrics as metrics_lib
 from nanodo import optimizer
-from nanodo.google.experimental import model_factory
 import optax
 import orbax.checkpoint as ocp
 import tensorflow as tf

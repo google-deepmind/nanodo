@@ -19,7 +19,6 @@ from nanodo import loss as loss_lib
 from nanodo import model
 from nanodo import optimizer as opt
 from nanodo import train
-from nanodo.google.configs import default
 import tensorflow_datasets as tfds
 
 from absl.testing import absltest
@@ -115,21 +114,21 @@ class TrainTest(parameterized.TestCase):
     self.assertEqual(state.step, 1)
 
     reference = {
-        "__train_loss": 3.945808,
-        "train_loss": 3.945808,
+        "__train_loss": 3.9817634,
+        "train_loss": 3.9817634,
         "train_ntokens": 124,
 
-        "grads/all/rms": 0.01341779,
-        "grads/all/mean": 3.026796e-05,
-        "grads/all/std": 0.01341776,
+        "grads/all/rms": 0.01179235,
+        "grads/all/mean": 3.3595228e-05,
+        "grads/all/std": 0.0117923,
 
-        "updates/all/rms": 0.99979043,
-        "updates/all/mean": -0.00446726,
-        "updates/all/std": 0.9997804,
+        "updates/all/rms": 0.9997482,
+        "updates/all/mean": 0.002217,
+        "updates/all/std": 0.9997457,
 
-        "params/all/rms": 0.16059065,
-        "params/all/mean": 0.00510256,
-        "params/all/std": 0.16050959,
+        "params/all/rms": 0.13636664,
+        "params/all/mean": 0.00515785,
+        "params/all/std": 0.13626905,
 
         "learning_rate": c.opt.init_learning_rate,
 

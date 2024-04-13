@@ -11,7 +11,6 @@ from clu import platform
 import jax
 from ml_collections import config_flags
 from nanodo import train
-import multiprocessing
 
 FLAGS = flags.FLAGS
 
