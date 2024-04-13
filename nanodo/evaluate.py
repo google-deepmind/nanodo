@@ -73,7 +73,7 @@ class Evaluator:
 
   def eval(self, params: PyTree) -> dict[str, float]:
     """Run eval with at most one epoch."""
-    metrics = metrics_lib.Average.empty()
+    metrics = metrics_lib.Average()
     i = 0
     for i, batch in enumerate(self.ds.as_numpy_iterator()):
       step_metrics = jax.device_get(self.step_fn(params, batch))
@@ -83,11 +83,11 @@ class Evaluator:
         break
     if i < self.c.eval_steps:
       logging.warning("Ran out of data at step %d. Stopping.", i)
-    loss = metrics.compute()
+
     output = {
-        "loss": loss["mean"],
-        "loss_std": loss["mean_standard_error"],
-        "loss_uc": loss["mean"] + 3 * loss["mean_standard_error"],
+        "loss": metrics.mean,
+        "loss_std": metrics.sem,
+        "loss_uc": metrics.mean + 3 * metrics.sem,
     }
     if self.bpB:
       output |= {
@@ -127,5 +127,4 @@ def _compute_unnormed_metrics(
   losses_BxL = losses.softmax_cross_entropy_with_integer_labels(
       logits_BxLxV, labels_BxL
   )
-  return metrics_lib.Average.from_model_output(
-      values=losses_BxL, mask=weights_BxL)
+  return metrics_lib.Average.from_array(losses_BxL, mask=weights_BxL)

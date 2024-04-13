@@ -44,15 +44,15 @@ class EvalTest(parameterized.TestCase):
     input_shape = (2, 256)
     x = jnp.ones(input_shape, dtype=jnp.int32)
     initial_variables = jax.jit(m.init)(init_rng, x)
-    metrics = metrics_lib.Average.empty()
+    metrics = metrics_lib.Average()
     for _ in range(3):
       step_metrics = evaluate._eval_step(initial_variables["params"], x, m)
       metrics = metrics.merge(step_metrics)
-    loss = metrics.compute()
-    self.assertGreater(loss["mean"], 0)
-    self.assertGreater(loss["mean_standard_error"], 0)
-    self.assertGreater(loss["variance"], 0)
-    self.assertGreater(loss["count"], 0)
+
+    self.assertGreater(metrics.mean, 0)
+    self.assertGreater(metrics.sem, 0)
+    self.assertGreater(metrics.variance, 0)
+    self.assertGreater(metrics.count, 0)
 
 
 if __name__ == "__main__":

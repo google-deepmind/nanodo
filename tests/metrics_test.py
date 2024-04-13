@@ -1,6 +1,7 @@
 """Tests for `../metrics.py`."""
+
 # pylint: disable=invalid-name,g-importing-member,g-import-not-at-top
-import math
+
 from typing import TYPE_CHECKING
 
 from absl.testing import absltest
@@ -154,36 +155,35 @@ class MetricsTest(parameterized.TestCase):
       # self.assertEqual(costs["bytes accessed_compiled"], memory_ref)
 
   def test_gaussian(self):
-    # TODO: Clean up this test and associated code.
     rng = jax.random.PRNGKey(0)
     data = jax.random.normal(rng, (100,))
     average = None
+
     for x in data:
-      update = metrics_lib.Average.from_model_output(x)
+      update = metrics_lib.Average.from_array(x)
       average = update if average is None else average.merge(update)
+
     self.assertIsNotNone(average)
-    final = average.compute()
+
     self.assertAlmostEqual(
-        float(final["mean"]),
+        average.mean,
         0.0,
-        delta=3 * final["mean_standard_error"],
+        delta=3 * average.sem,
     )
 
-    fullaverage = metrics_lib.Average.from_model_output(data)
-    fullfinal = fullaverage.summary()
+    full_average = metrics_lib.Average.from_array(data)
+
     self.assertAlmostEqual(
-        float(fullfinal.mean),
+        full_average.mean,
         0.0,
-        delta=3 * fullfinal.mean_standard_error,
+        delta=3 * full_average.sem,
     )
 
     # agreement
     self.assertAlmostEqual(
-        float(final["mean"]),
-        float(fullfinal.mean),
-        delta=math.sqrt(
-            final["mean_standard_error"] ** 2 + fullfinal.mean_standard_error**2
-        ),
+        average.mean,
+        full_average.mean,
+        delta=(average.sem ** 2 + full_average.sem ** 2) ** 0.5,
     )
 
 

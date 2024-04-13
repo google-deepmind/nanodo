@@ -2,12 +2,10 @@
 
 # pylint: disable=invalid-name,g-importing-member,g-import-not-at-top
 
-import dataclasses
 from typing import Any, Callable, TYPE_CHECKING
 
 from absl import logging
-from clu import metrics as clu_metrics
-import flax
+from flax.struct import dataclass
 import jax
 import jax.numpy as jnp
 from nanodo import optimizer
@@ -15,9 +13,9 @@ import numpy as np
 
 
 if TYPE_CHECKING:
+  from flax.training.train_state import TrainState
   import ml_collections
   from nanodo import loss as loss_lib
-  from flax.training.train_state import TrainState
 
 
 PyTree = Any
@@ -108,7 +106,7 @@ def get_metrics(
 
 
 def aggregate_microbatch_metrics(
-    microbatch_metrics: list[dict[str, int | float | jax.Array]]
+    microbatch_metrics: list[dict[str, int | float | jax.Array]],
 ) -> dict[str, int | float | jax.Array]:
   """Accumulate train metrics weighted by `train_ntokens`.
 
@@ -248,9 +246,7 @@ def _size(g: PyTree) -> int:
   return jax.tree_util.tree_reduce(lambda x, y: x + jnp.size(y), g, 0)
 
 
-# TODO: CLean up code below. Seems unnecessarily complex.
-#
-# A clu version of the welford metric.
+# A dataclass version of the welford metric.
 #
 # Computes a running mean and standard deviation for a set of measurements.
 #
@@ -272,109 +268,75 @@ def _size(g: PyTree) -> int:
 #
 # As an example of the usage:
 #
-#     average = Average.empty()
+#     average = Average()
 #     for x in values:
-#       update = Average.from_output_value(x)
+#       update = Average.from_array(x)
 #       average = average.merge(update)
-#     print(average.compute())
-#
-# This will print the estimate of the mean with its standard error as a string,
-# i.e. "1.994+/-0.031"
-#
-# `average.compute` itself returns a `Summary`, an object
-# representing the `mean`, `mean_standard_error` (i.e. the error on the estimate
-# of the mean), as well
-# as the `variance` of all of the consumed numbers and the total `count` of the
-# values consumed.
-@flax.struct.dataclass
-class Summary:
-  """Statistical summary of the data."""
-
-  mean: jnp.ndarray
-  mean_standard_error: jnp.ndarray
-  variance: jnp.ndarray
-  count: jnp.ndarray
-
-  def __str__(self):
-    return f"{self.mean}+/-{self.mean_standard_error}"
+#     print(average)
 
 
-@flax.struct.dataclass
-class Average(clu_metrics.Metric):
+@dataclass
+class Average:
   """Computes a running mean and standard deviation from a set of measurements.
 
   Assumes the resulting value is a scalar but will count all values
   fed in, so will average across all dimensions by default.
   """
 
-  count: jax.Array
-  mean: jax.Array
-  m2: jax.Array
+  count: int = 0
+  mean: float = 0
+  m2: float = 0
+  variance: float = 0
+  sem: float = 0
 
   @classmethod
-  def empty(cls) -> "Average":
-    return cls(
-        count=jnp.array(0, jnp.int32),
-        mean=jnp.array(0, jnp.float32),
-        m2=jnp.array(0, jnp.float32),
-    )
-
-  @classmethod
-  def from_model_output(
-      cls, values=jnp.ndarray, mask: jnp.ndarray | None = None, **_
+  def from_array(
+      cls,
+      x: np.ndarray | jax.Array,
+      mask: np.ndarray | jax.Array | None = None,
   ) -> "Average":
-    if values.ndim == 0:
-      values = values[None]
+    """Compute the mean/std of a numpy array.
+
+    Args:
+      x: array of values.
+      mask: optional mask.
+
+    Returns:
+      An `Average` instance from the array values.
+    """
     if mask is None:
-      mask = jnp.ones_like(values)
-    # Leading dimensions of mask and values must match.
-    if mask.shape[0] != values.shape[0]:
-      raise ValueError(
-          "Argument `mask` must have the same leading dimension as `values`. "
-          f"Received mask of dimension {mask.shape} "
-          f"and values of dimension {values.shape}."
-      )
-    # Broadcast mask to the same number of dimensions as values.
-    if mask.ndim < values.ndim:
-      mask = jnp.expand_dims(
-          mask, axis=tuple(np.arange(mask.ndim, values.ndim))
-      )
-    mask = mask.astype(bool)
-    # utils.check_param(mask, dtype=bool, ndim=values.ndim)
-    count = jnp.where(
-        mask,
-        jnp.ones_like(values, dtype=jnp.int32),
-        jnp.zeros_like(values, dtype=jnp.int32),
-    ).sum()
-    total = jnp.where(mask, values, jnp.zeros_like(values)).sum()
+      count = x.size
+    else:
+      nnz = np.count_nonzero if isinstance(x, np.ndarray) else jnp.count_nonzero
+      count = nnz(mask)
+
+    total = x.sum(where=mask)
     mean = total / count
-    delta2 = (values - mean) ** 2
-    m2 = jnp.where(mask, delta2, jnp.zeros_like(delta2)).sum()
-    return cls(count=count, mean=mean, m2=m2)
+    delta2 = (x - mean)**2
+    m2 = delta2.sum(where=mask)
+    variance = m2 / count
+    sem = (variance / count)**0.5
+    return Average(count=count, mean=mean, m2=m2, variance=variance, sem=sem)
 
-  def merge(self, other: "Average"):
-    clu_metrics._assert_same_shape(  #  pylint:disable=protected-access
-        self.count, other.count
-    )
+  def merge(self, other: "Average") -> "Average":
+    """Compute the average statistics given two averages.
 
+    Args:
+      other: `Average` statistics of another collection.
+
+    Returns:
+      `Average` of `self` and `other`.
+    """
     count = other.count + self.count
+
+    if count == 0:
+      return self
+
     delta = other.mean - self.mean
     # TODO: in cases where na ~ nb >> 1, instead use
     # mean = (self.count * self.mean + other.count * other.mean) / count
     mean = self.mean + delta * other.count / count
     m2 = self.m2 + other.m2 + delta * delta * self.count * other.count / count
-    return type(self)(count=count, mean=mean, m2=m2)
-
-  def summary(self) -> Summary:
-    """Returns some summary statistics about the data."""
-    variance = self.m2 / self.count
-    return Summary(
-        mean=self.mean,
-        mean_standard_error=jnp.sqrt(variance / self.count),
-        variance=variance,
-        count=self.count,
-    )
-
-  def compute(self):
-    """Returns the computed summary."""
-    return dataclasses.asdict(self.summary())
+    variance = m2 / count
+    sem = (variance / count)**0.5
+    return Average(count=count, mean=mean, m2=m2, variance=variance, sem=sem)
