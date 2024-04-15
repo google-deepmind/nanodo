@@ -16,8 +16,8 @@ def get_optimizer(c: "ml_collections.ConfigDict") -> optax.MultiSteps:
   """Get optimizer."""
   optimizer = _get_base_optimizer(c)
 
-  if c.get("optimizer", "adamw") == "adamw_mup":
-    scale_dict = {"kernel": c.layerwise_lr_multiplier.kernel}
+  if c.get("layerwise_lr_multiplier", None) is not None:
+    scale_dict = dict(c.layerwise_lr_multiplier)
     optimizer = optax.chain(optimizer, _scale_by_dict(scale_dict))
 
   clip_by_global_norm = c.get("clip_by_global_norm", None)
@@ -141,6 +141,10 @@ def _get_base_optimizer(
   learning_rate_fn = get_learning_rate_schedule(c)
   optimizer_type = c.get("optimizer", "adamw")
   weight_decay_exclusion_names = c.get("weight_decay_exclusion_names", [])
+  if c.get("independent_weight_decay", False):
+    weight_decay = c.weight_decay / c.peak_learning_rate
+  else:
+    weight_decay = c.weight_decay
 
   if optimizer_type == "adafactor":
     base_optimizer = optax.adafactor(
@@ -155,16 +159,22 @@ def _get_base_optimizer(
         weight_decay_mask=functools.partial(
             _params_mask, exclude_names=weight_decay_exclusion_names))
 
-  elif optimizer_type in ("adamw", "adamw_mup"):
-    if c.get("independent_weight_decay", False):
-      weight_decay = c.weight_decay / c.peak_learning_rate
-    else:
-      weight_decay = c.weight_decay
+  elif optimizer_type == "adamw":
     base_optimizer = optax.adamw(
         learning_rate_fn,
         b1=c.get("b1", 0.9),
         b2=c.get("b2", 0.98),
         eps=c.get("eps", 1e-9),
+        weight_decay=weight_decay,
+        mask=functools.partial(
+            _params_mask, exclude_names=weight_decay_exclusion_names),
+    )
+
+  elif optimizer_type == "lion":
+    base_optimizer = optax.lion(
+        learning_rate_fn,
+        b1=c.get("b1", 0.9),
+        b2=c.get("b2", 0.98),
         weight_decay=weight_decay,
         mask=functools.partial(
             _params_mask, exclude_names=weight_decay_exclusion_names),
