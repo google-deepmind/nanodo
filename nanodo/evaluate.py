@@ -52,13 +52,13 @@ class Evaluator:
   def __init__(
       self,
       c: "ml_collections.ConfigDict",
-      eval_model: "nn.Module",
+      model: "nn.Module",
       eval_ds: "tf.data.Dataset",
       mesh: Mesh,
       shardings: PyTree,
   ):
     self.step_fn = jax.jit(
-        functools.partial(_eval_step, eval_model=eval_model, mesh=mesh),
+        functools.partial(_eval_step, model=model, mesh=mesh),
         in_shardings=(
             shardings.params,
             NamedSharding(mesh, P()),
@@ -105,7 +105,7 @@ class Evaluator:
 def _eval_step(
     params: PyTree,
     in_BxL: jax.Array,
-    eval_model: "nn.Module",
+    model: "nn.Module",
     mesh: Mesh | None = None,
 ) -> metrics_lib.Average:
   """Return evaluation metrics on a single batch of data."""
@@ -114,7 +114,7 @@ def _eval_step(
         in_BxL, NamedSharding(mesh, P("data"))
     )
   x_BxL, y_BxL, weights_BxL = data.get_in_out(in_BxL)
-  logits_BxLxV = eval_model.apply({"params": params}, x_BxL)
+  logits_BxLxV = model.apply({"params": params}, x_BxL)
   return _compute_unnormed_metrics(logits_BxLxV, y_BxL, weights_BxL)
 
 

@@ -62,15 +62,12 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
   rng = jax.random.PRNGKey(c.seed)
 
   tokenizer = data.get_tokenizer(c.vocab_path)
+  vocab_size = tokenizer.vocab_size()
 
-  train_model, eval_model, get_loss_fn = (
-      model_factory.get_train_and_eval_models(
-          c, vocab_size=tokenizer.vocab_size()
-      )
-  )
+  model, get_loss_fn = model_factory.get_model_and_loss(c, vocab_size)
 
   tic = time.time()
-  shardings, state = _init_train_state(c, train_model, rng=rng, mesh=mesh)
+  shardings, state = _init_train_state(c, model, rng=rng, mesh=mesh)
   init_time = time.time() - tic
   logging.info("[TIMING]: get_new_state (jit init) time: %.2fs", init_time)
 
@@ -131,7 +128,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
           shuffle=False,
       ),
   )
-  evaluator = evaluate.Evaluator(c, eval_model, eval_ds, mesh, shardings)
+  evaluator = evaluate.Evaluator(c, model, eval_ds, mesh, shardings)
 
   writer = metric_writers.create_default_writer(
       workdir,
@@ -300,7 +297,7 @@ def _train_step(
 
 def _init_train_state(
     c: "ml_collections.ConfigDict",
-    train_model: nn.Module,
+    model: nn.Module,
     rng: jax.Array,
     mesh: Mesh,
 ) -> tuple[PyTree, TrainState]:
@@ -308,9 +305,9 @@ def _init_train_state(
   inputs = jax.ShapeDtypeStruct(shape=(1, c.context_length), dtype=jnp.int32)
 
   def init(rng, inputs):
-    params = train_model.init(rng, inputs)
+    params = model.init(rng, inputs)
     return TrainState.create(
-        apply_fn=train_model.apply,
+        apply_fn=model.apply,
         params=params["params"],
         tx=optimizer.get_optimizer(c.opt),
     )
