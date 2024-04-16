@@ -51,12 +51,7 @@ class TransformerDo(nn.Module):
 
     block = nn.remat(TBlock) if cfg.remat else TBlock
     self.blocks = [block(cfg) for _ in range(cfg.N)]
-
-    self.out_ln = nn.LayerNorm(
-        dtype=cfg.dtype,
-        scale_init=fsdp.init('layer_norm', cfg),
-        use_bias=False,
-    )
+    self.out_ln = nn.LayerNorm(dtype=cfg.dtype, use_bias=False)
 
   def __call__(self, y_BxL: jax.Array):
     # For training on concatenated examples.
@@ -93,18 +88,13 @@ class TBlock(nn.Module):
   @nn.compact
   def __call__(self, in_BxLxD: jax.Array):
     docfg = self.docfg
-    x_BxLxD = nn.LayerNorm(
-        dtype=docfg.dtype,
-        use_bias=False,
-        scale_init=fsdp.init('layer_norm', docfg)
-        )(in_BxLxD)  # "pre-layernorm"
+
+    # "pre-layernorm"
+    x_BxLxD = nn.LayerNorm(dtype=docfg.dtype, use_bias=False)(in_BxLxD)
     x_BxLxD = CausalAttn(docfg)(x_BxLxD)
     x_BxLxD += in_BxLxD
-    z_BxLxD = nn.LayerNorm(
-        dtype=docfg.dtype,
-        use_bias=False,
-        scale_init=fsdp.init('layer_norm', docfg)
-        )(x_BxLxD)
+
+    z_BxLxD = nn.LayerNorm(dtype=docfg.dtype, use_bias=False)(x_BxLxD)
     z_BxLxD = Mlp(docfg)(z_BxLxD)
 
     return x_BxLxD + z_BxLxD

@@ -34,9 +34,5 @@ def init(layer_type: str, docfg: DoConfig) -> nn.initializers.Initializer:
       return partition_fn(docfg.head_init, ("data", None))
     else:
       return partition_fn(docfg.kernel_init, ("data", None))
-  elif layer_type in ["layer_norm", "rms_norm"]:  # [D,]
-    return nn.initializers.ones
-  elif layer_type == "rms_norm_indirect_scale":  # [D,]
-    return nn.initializers.zeros
   else:
     raise ValueError(f"unrecognized layer type: {layer_type}")
