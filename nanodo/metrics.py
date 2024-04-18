@@ -181,7 +181,7 @@ def _welford_mean(g: PyTree) -> float:
     new_mean = mean * (size / new_size) + jnp.sum(x) / new_size
     return new_mean, new_size
 
-  mean, _ = jax.tree.reduce(step, g, (0., 0))
+  mean, _ = jax.tree.reduce(step, g, (0., 0.))
   return mean
 
 

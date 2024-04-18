@@ -45,6 +45,44 @@ def _get_config() -> "ml_collections.ConfigDict":
 
 class MetricsTest(parameterized.TestCase):
 
+  def test_welford_mean_large_array(self):
+    if jax.default_backend() != "gpu":
+      self.skipTest("Not enough RAM on TPU/CPU to generate a contiguous array.")
+
+    dtype = jnp.bfloat16
+    ref_mean = 5.
+    x = random.normal(random.PRNGKey(1), (2**10, 2**(31 - 10)), dtype)
+    x += ref_mean
+
+    # Array size > int32 limit.
+    self.assertGreater(x.size, jnp.iinfo(jnp.int32).max)
+
+    # Mean matches the reference.
+    mean = metrics_lib._welford_mean(x)
+    self.assertEqual(dtype, jnp.dtype(mean))
+    self.assertEqual(ref_mean, mean)
+
+  def test_welford_mean_large_pytree(self):
+    if jax.default_backend() == "cpu":
+      self.skipTest("Test too slow on CPU.")
+
+    dtype = jnp.bfloat16
+    n = 2**4
+    ref_means = range(n)
+    keys = random.split(random.PRNGKey(1), n)
+    x = [
+        ref_mean + random.normal(key, (2**10, 2**(31 - 10 - 4)), dtype)
+        for ref_mean, key in zip(ref_means, keys)
+    ]
+
+    # Total tree size > int32 limit.
+    self.assertGreater(metrics_lib._size(x), jnp.iinfo(jnp.int32).max)
+
+    # Mean matches the reference.
+    mean = metrics_lib._welford_mean(x)
+    self.assertEqual(dtype, jnp.dtype(mean))
+    self.assertEqual(sum(ref_means) / n, mean)
+
   def test_aggregate_microbatch_metrics(self):
     c = _get_config()
     docfg = model.DoConfig(D=128, H=16, L=256, N=4, V=1024, F=4 * 4)
