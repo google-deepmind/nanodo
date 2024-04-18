@@ -16,7 +16,7 @@ from nanodo import metrics as metrics_lib
 from nanodo import model
 from nanodo import optimizer as opt
 from nanodo import train
-
+from nanodo.configs import default
 
 if TYPE_CHECKING:
   import ml_collections

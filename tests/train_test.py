@@ -19,6 +19,7 @@ from nanodo import loss as loss_lib
 from nanodo import model
 from nanodo import optimizer as opt
 from nanodo import train
+from nanodo.configs import default
 import tensorflow_datasets as tfds
 
 from absl.testing import absltest

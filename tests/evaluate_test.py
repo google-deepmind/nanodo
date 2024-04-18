@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from nanodo import evaluate
 from nanodo import metrics as metrics_lib
 from nanodo import model
-
+from nanodo.configs import default
 
 if TYPE_CHECKING:
   import ml_collections

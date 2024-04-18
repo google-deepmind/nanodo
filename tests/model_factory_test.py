@@ -10,6 +10,8 @@ import jax
 import jax.numpy as jnp
 from nanodo import model as default_model
 from nanodo import model_factory
+from nanodo.configs import default
+
 
 jax.config.parse_flags_with_absl()
 jax.config.update('jax_numpy_rank_promotion', 'raise')
