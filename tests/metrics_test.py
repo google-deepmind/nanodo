@@ -11,7 +11,6 @@ from flax.training.train_state import TrainState
 import jax
 from jax import random
 import jax.numpy as jnp
-from nanodo import loss as loss_lib
 from nanodo import metrics as metrics_lib
 from nanodo import model
 from nanodo import optimizer as opt
@@ -100,9 +99,7 @@ class MetricsTest(parameterized.TestCase):
         tx=opt.get_optimizer(c.opt),
     )
 
-    state_single, metrics_single = train._train_step(
-        state_single, in_BxL, c, loss_lib.get_default_loss_fn
-    )
+    state_single, metrics_single = train._train_step(state_single, in_BxL, c)
     metrics_single = metrics_lib.aggregate_microbatch_metrics([metrics_single])
 
     grad_accumulation_steps = 4
@@ -116,8 +113,7 @@ class MetricsTest(parameterized.TestCase):
     microbatch_train_metrics = []
     for sub_in_BxL in jnp.array_split(in_BxL, grad_accumulation_steps, axis=0):
       state_multistep, metrics = train._train_step(
-          state_multistep, sub_in_BxL, c, loss_lib.get_default_loss_fn
-      )
+          state_multistep, sub_in_BxL, c)
       microbatch_train_metrics.append(metrics)
     metrics_multistep = metrics_lib.aggregate_microbatch_metrics(
         microbatch_train_metrics)

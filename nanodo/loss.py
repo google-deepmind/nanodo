@@ -4,11 +4,11 @@
 
 from typing import Any, Callable, TYPE_CHECKING
 
-import chex
+from flax.struct import dataclass
 import jax
 import jax.numpy as jnp
 from nanodo import data
-import optax
+from optax import losses
 
 if TYPE_CHECKING:
   import ml_collections
@@ -17,13 +17,13 @@ if TYPE_CHECKING:
 PyTree = Any
 
 
-@chex.dataclass(frozen=True)
+@dataclass
 class LossAuxData:
   ntokens: jax.Array
   state: PyTree
   log_perplexity: jax.Array
 
-# loss(params) function to be used in jax.value_and_grad.
+# loss(params) function to be used in `jax.value_and_grad`.
 LossFn = Callable[[PyTree], tuple[jax.Array, LossAuxData]]
 
 LossFnFactory = Callable[
@@ -49,7 +49,7 @@ def get_default_loss_fn(
         mutable=mutable,
     )
 
-    losses_BxL = optax.softmax_cross_entropy_with_integer_labels(
+    losses_BxL = losses.softmax_cross_entropy_with_integer_labels(
         logits_BxLxV, y_BxL
     )
     ntokens = weights_BxL.sum()

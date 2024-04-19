@@ -15,7 +15,6 @@ from jax.experimental import mesh_utils
 import jax.numpy as jnp
 from jax.sharding import Mesh
 from nanodo import data
-from nanodo import loss as loss_lib
 from nanodo import model
 from nanodo import optimizer as opt
 from nanodo import train
@@ -78,7 +77,7 @@ class TrainTest(parameterized.TestCase):
     rng = jax.random.PRNGKey(42)
     mesh = Mesh(mesh_utils.create_device_mesh((jax.device_count(),)), ("data",))
     shardings, state = train._init_train_state(c, m, rng, mesh=mesh)
-    t = train.Trainer(c, state, mesh, shardings, loss_lib.get_default_loss_fn)
+    t = train.Trainer(c, state, mesh, shardings)
 
     self.assertEqual(t.step, 0)
 
@@ -109,9 +108,7 @@ class TrainTest(parameterized.TestCase):
     )
 
     self.assertEqual(state.step, 0)
-    state, metrics = train._train_step(
-        state, in_BxL, c, loss_lib.get_default_loss_fn
-    )
+    state, metrics = train._train_step(state, in_BxL, c)
     self.assertEqual(state.step, 1)
 
     reference = {
