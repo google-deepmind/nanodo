@@ -24,6 +24,7 @@ from nanodo import loss as loss_lib
 from nanodo import metrics as metrics_lib
 from nanodo import model_factory
 from nanodo import optimizer
+import numpy as np
 import optax
 import orbax.checkpoint as ocp
 import tensorflow as tf
@@ -158,68 +159,66 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
     hooks = []
 
   with metric_writers.ensure_flushes(writer):
-    with jax.spmd_mode("allow_all"):  # 🔥🔥 TODO: remove
+    def _eval():
+      with report_progress.timed("eval"):
+        step = trainer.step
+        eval_metrics = evaluator.eval(trainer.state.params)
+        writer.write_scalars(step, eval_metrics)
 
-      def _eval():
-        with report_progress.timed("eval"):
-          step = trainer.step
-          eval_metrics = evaluator.eval(trainer.state.params)
-          writer.write_scalars(step, eval_metrics)
+    def _checkpoint():
+      if c.checkpoint:
+        step = trainer.step
+        logging.info("Saving last checkpoint step %d", step)
+        ckpt_mngr.save(step, {"state": trainer.state, "data": train_iter})
 
-      def _checkpoint():
-        if c.checkpoint:
-          step = trainer.step
-          logging.info("Saving last checkpoint step %d", step)
-          ckpt_mngr.save(step, {"state": trainer.state, "data": train_iter})
-
-      def _process_metrics(step, microbatch_metrics):
-        if microbatch_metrics and step % c.write_train_metrics_every_steps == 0:
-          microbatch_metrics = [trainer.get_metrics(step, m)
-                                for m in microbatch_metrics]
-          metrics = metrics_lib.aggregate_microbatch_metrics(microbatch_metrics)
-          writer.write_scalars(step, metrics)
-          # Simple check for NaN/Inf for early termination.
-          loss = metrics["train_loss"]
-          if jnp.isnan(loss) or jnp.isinf(loss):
-            # Terminate training. The next step has already been dispatched.
-            logging.error(
-                "[TRAINING ERROR] Nan/Inf encountered in training loop.\n "
-                "Terminating training loop at step: %d", step + 1
-            )
-            _eval()
-            raise FloatingPointError(step + 1, loss)
-
-      pending_microbatch_metrics = []
-      for step in range(trainer.step, c.opt.num_train_steps + 1):
-        is_final_step = step == c.opt.num_train_steps
-        if step % c.eval_every_steps == 0 or is_final_step:
+    def _process_metrics(step, microbatch_metrics):
+      if microbatch_metrics and step % c.write_train_metrics_every_steps == 0:
+        microbatch_metrics = [trainer.get_metrics(step, m)
+                              for m in microbatch_metrics]
+        metrics = metrics_lib.aggregate_microbatch_metrics(microbatch_metrics)
+        writer.write_scalars(step, metrics)
+        # Simple check for NaN/Inf for early termination.
+        loss = metrics["train_loss"]
+        if np.isnan(loss) or np.isinf(loss):
+          # Terminate training. The next step has already been dispatched.
+          logging.error(
+              "[TRAINING ERROR] Nan/Inf encountered in training loop.\n "
+              "Terminating training loop at step: %d", step + 1
+          )
           _eval()
-        if step % c.checkpoint_every_steps == 0 or is_final_step:
-          _checkpoint()
+          raise FloatingPointError(step + 1, loss)
 
-        for h in hooks:
-          h(step)
+    pending_microbatch_metrics = []
+    for step in range(trainer.step, c.opt.num_train_steps + 1):
+      is_final_step = step == c.opt.num_train_steps
+      if step % c.eval_every_steps == 0 or is_final_step:
+        _eval()
+      if step % c.checkpoint_every_steps == 0 or is_final_step:
+        _checkpoint()
 
-        # Schedule this step's tasks.
-        # Initialize metrics for microbatch accumulation.
-        new_microbatch_metrics = []
-        for _ in range(grad_accumulation_steps):
-          try:
-            in_BxL = next(train_iter)
-          except StopIteration:
-            logging.warning("Ran out of data at step %d. Stopping.", step)
-            break
-          # Async dispatch next step.
-          new_microbatch_metrics.append(trainer.do_step(step, in_BxL))
+      for h in hooks:
+        h(step)
 
-        # Download to host and process the previous step's metrics after having
-        # asynchronously dispatched the new step.
-        _process_metrics(step - 1, pending_microbatch_metrics)
-        pending_microbatch_metrics = new_microbatch_metrics
-        logging.log_first_n(
-            logging.INFO, "Finished training step %d.", 5, step - 1)
-      # Download to host and process the final step's metrics.
-      _process_metrics(c.opt.num_train_steps, pending_microbatch_metrics)
+      # Schedule this step's tasks.
+      # Initialize metrics for microbatch accumulation.
+      new_microbatch_metrics = []
+      for _ in range(grad_accumulation_steps):
+        try:
+          in_BxL = next(train_iter)
+        except StopIteration:
+          logging.warning("Ran out of data at step %d. Stopping.", step)
+          break
+        # Async dispatch next step.
+        new_microbatch_metrics.append(trainer.do_step(step, in_BxL))
+
+      # Download to host and process the previous step's metrics after having
+      # asynchronously dispatched the new step.
+      _process_metrics(step - 1, pending_microbatch_metrics)
+      pending_microbatch_metrics = new_microbatch_metrics
+      logging.log_first_n(
+          logging.INFO, "Finished training step %d.", 5, step - 1)
+    # Download to host and process the final step's metrics.
+    _process_metrics(c.opt.num_train_steps, pending_microbatch_metrics)
 
   if c.checkpoint:
     ckpt_mngr.close()

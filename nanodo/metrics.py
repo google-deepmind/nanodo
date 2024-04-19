@@ -150,8 +150,8 @@ def aggregate_microbatch_metrics(
       metrics[k] = v / train_ntokens
 
   # Perplexity is exponential of average, so compute after accumulation.
-  metrics["train_perplexity"] = jnp.minimum(
-      jnp.exp(metrics["log_perplexity"]),
+  metrics["train_perplexity"] = np.minimum(
+      np.exp(metrics["log_perplexity"]),
       1.0e4,
   )
   return metrics
