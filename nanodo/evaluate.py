@@ -74,16 +74,20 @@ class Evaluator:
   def eval(self, params: PyTree) -> dict[str, float]:
     """Run eval with at most one epoch."""
     metrics = metrics_lib.Average()
+    pending_metrics = metrics_lib.Average()
     i = 0
     for i, batch in enumerate(self.ds.as_numpy_iterator()):
-      step_metrics = jax.device_get(self.step_fn(params, batch))
-      metrics = metrics.merge(step_metrics)
+      new_metrics = self.step_fn(params, batch)  # Async dispatch new step.
+      # Get previous step's results and merge with metrics.
+      metrics = metrics.merge(jax.device_get(pending_metrics))
+      pending_metrics = new_metrics
       if i == self.c.eval_steps:
         logging.info("Ended eval at step %d (batch size %d)", i, batch.shape[0])
         break
     if i < self.c.eval_steps:
       logging.warning("Ran out of data at step %d. Stopping.", i)
-
+    # Get the last step's results and merge with metrics.
+    metrics = metrics.merge(jax.device_get(pending_metrics))
     output = {
         "loss": metrics.mean,
         "loss_std": metrics.sem,
