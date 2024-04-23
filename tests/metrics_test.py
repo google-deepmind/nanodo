@@ -31,13 +31,13 @@ def _get_config() -> "ml_collections.ConfigDict":
 
   c.batch_size = 2
   c.eval_steps = 1
-  c.vocab_size = 32
+  c.V = 32
 
-  c.context_length = 64
-  c.model_dim = 32
-  c.mlp_dim = 128
-  c.num_layers = 2
-  c.num_heads = 4
+  c.model.L = 64
+  c.model.D = 32
+  c.model.F = 128
+  c.model.N = 2
+  c.model.H = 4
 
   return c
 

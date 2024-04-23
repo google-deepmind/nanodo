@@ -30,7 +30,7 @@ def _get_config() -> "ml_collections.ConfigDict":
   c.eval_steps = 1
   c.checkpoint_every_steps = 1
   c.pygrain_worker_count = 2
-  c.vocab_size = 32
+  c.V = 32
   return c
 
 

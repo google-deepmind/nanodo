@@ -139,7 +139,7 @@ def _get_base_optimizer(
 ) -> optax.GradientTransformation:
   """Get base optimizer."""
   learning_rate_fn = get_learning_rate_schedule(c)
-  optimizer_type = c.get("optimizer", "adamw")
+  optimizer_type = c.optimizer
   weight_decay_exclusion_names = c.get("weight_decay_exclusion_names", [])
   if c.get("independent_weight_decay", False):
     weight_decay = c.weight_decay / c.peak_learning_rate

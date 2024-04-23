@@ -55,13 +55,13 @@ def _get_config() -> "ml_collections.ConfigDict":
   c.eval_steps = 1
   c.checkpoint_every_steps = 1
   c.pygrain_worker_count = 2
-  c.vocab_size = 32
+  c.V = 32
 
-  c.context_length = 64
-  c.model_dim = 32
-  c.mlp_dim = 128
-  c.num_layers = 2
-  c.num_heads = 4
+  c.model.L = 64
+  c.model.D = 32
+  c.model.F = 128
+  c.model.N = 2
+  c.model.H = 4
 
   return c
 
@@ -84,20 +84,20 @@ class TrainTest(parameterized.TestCase):
   def test_train_step(self):
     c = _get_config()
     docfg = model.DoConfig(
-        D=c.model_dim,
-        H=c.num_heads,
-        L=c.context_length,
-        N=c.num_layers,
-        V=c.vocab_size,
-        F=c.mlp_dim,
+        D=c.model.D,
+        H=c.model.H,
+        L=c.model.L,
+        N=c.model.N,
+        V=c.V,
+        F=c.model.F,
     )
     m = model.TransformerDo(docfg)
     init_rng, data_rng = jax.random.split(jax.random.PRNGKey(42))
     in_BxL = jax.random.randint(
         data_rng,
-        (2, c.context_length),
+        (2, c.model.L),
         0,
-        c.vocab_size,
+        c.V,
         jnp.int32,
     )
     params = jax.jit(m.init)(init_rng, in_BxL)
@@ -158,15 +158,17 @@ class TrainTest(parameterized.TestCase):
   def test_train_and_evaluate(self, preprocessing):
     if jax.default_backend() == "cpu":
       self.skipTest("Skipping slow tests on CPU.")
+
     c = _get_config()
     c.checkpoint = True
+
     cfg = model.DoConfig(
-        D=c.model_dim,
-        H=c.num_heads,
-        L=c.context_length,
-        N=c.num_layers,
-        V=c.vocab_size,
-        F=c.mlp_dim,
+        D=c.model.D,
+        H=c.model.H,
+        L=c.model.L,
+        N=c.model.N,
+        V=c.V,
+        F=c.model.F,
     )
     m = model.TransformerDo(cfg)
     rng = jax.random.PRNGKey(42)
@@ -177,7 +179,7 @@ class TrainTest(parameterized.TestCase):
       train_iter = data.py_batched_tfds(
           tfds_name=c.ds_name,
           split="train",
-          context_size=c.context_length,
+          context_size=c.model.L,
           worker_count=c.pygrain_worker_count,
           vocab_path=c.vocab_path,
           batch_size=c.batch_size,

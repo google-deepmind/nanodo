@@ -77,7 +77,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
   train_iter = data.py_batched_tfds(
       tfds_name=c.ds_name,
       split="train",
-      context_size=c.context_length,
+      context_size=c.model.L,
       worker_count=c.pygrain_worker_count,
       vocab_path=c.vocab_path,
       batch_size=micro_batch_size,
@@ -108,10 +108,10 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
 
   # We may evaluate on larger context length than training to measure length
   # generalization.
-  if c.context_length < c.eval_max_target_length:
+  if c.model.L < c.eval_max_target_length:
     logging.warning(
-        "context_length %d is smaller than eval_max_target_length %d",
-        c.context_length,
+        "L (context length) %d is smaller than eval_max_target_length %d",
+        c.model.L,
         c.eval_max_target_length,
     )
   eval_batch_size = c.get("eval_batch_size", micro_batch_size)
@@ -295,7 +295,6 @@ def _train_step(
 ) -> tuple[TrainState, dict[str, float | jax.Array]]:
   """One forward/backward pass."""
   if mesh is not None:
-    # B becomes local batch size here.
     in_BxL = jax.lax.with_sharding_constraint(
         in_BxL, NamedSharding(mesh, P("data"))
     )
@@ -325,7 +324,7 @@ def _init_train_state(
     mesh: Mesh,
 ) -> tuple[PyTree, TrainState]:
   """Creates a sharding and model state."""
-  inputs = jax.ShapeDtypeStruct(shape=(1, c.context_length), dtype=jnp.int32)
+  inputs = jax.ShapeDtypeStruct(shape=(1, c.model.L), dtype=jnp.int32)
 
   def init(rng, inputs):
     params = model.init(rng, inputs)

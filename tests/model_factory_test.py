@@ -35,21 +35,22 @@ class ModelTest(parameterized.TestCase):
     # equality test for experimental models
     # first set up config
     c = default.get_config()
-    c.model_dim = cfg.D
-    c.num_heads = cfg.H
-    c.context_length = cfg.L
-    c.num_layers = cfg.N
-    c.vocab_size = cfg.V
-    c.mlp_dim = cfg.F
-    c.dtype = 'float32'
+    c.model.D = cfg.D
+    c.model.H = cfg.H
+    c.model.L = cfg.L
+    c.model.N = cfg.N
+    c.V = cfg.V
+    c.model.F = cfg.F
+    c.model.dtype = 'float32'
 
     return default_model_out, params, x_BxL, c
 
   def test_default_model(self):
     rng = jax.random.PRNGKey(42)
     default_model_out, params, x_BxL, c = self._default_output(rng)
-    m, _ = model_factory.get_model_and_loss(c, c.vocab_size)
+    m, _ = model_factory.get_model_and_loss(c, c.V)
     self.assertTrue(jnp.allclose(m.apply(params, x_BxL), default_model_out))
+
 
 if __name__ == '__main__':
   absltest.main()
