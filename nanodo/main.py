@@ -14,12 +14,17 @@ from nanodo import train
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('workdir', None, 'Directory to store model data.')
+flags.DEFINE_string(
+    'workdir',
+    '/tmp/nanodo/',
+    'Directory to store model data.',
+)
 config_flags.DEFINE_config_file(
     'config',
     'configs/default.py',
     'File path to the training hyperparameter configuration.',
-    lock_config=True)
+    lock_config=True,
+)
 flags.mark_flags_as_required(['config', 'workdir'])
 
 

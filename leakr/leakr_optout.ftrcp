@@ -1,0 +1,11 @@
+name: "leakr_opt_out"
+desc: "Rules for exclude specific files"
+
+file_config:{
+  name: "sentencepiece"
+  desc: "sentencepiece vocab files"
+  pattern: "sentencepiece_cc_all.32000.100extra-sentencepiece.model"
+  compression: COMPRESSION_NONE
+  scan_mode: SCAN_SKIP
+  file_group: FG_BINARY_GENERIC
+}

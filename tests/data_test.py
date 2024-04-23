@@ -26,7 +26,7 @@ jax.config.update("jax_numpy_rank_promotion", "raise")
 
 
 def _get_vocab_path():
-  return  os.path.join(
+  return os.path.join(
       os.path.dirname(__file__),
       "testdata/sentencepiece_cc_all.32000.100extra-sentencepiece.model",
   )
