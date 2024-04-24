@@ -1,6 +1,6 @@
 """Factory for producing experimental models."""
 
-# pylint: disable=invalid-name,g-import-not-at-top
+# pylint: disable=invalid-name,g-import-not-at-top,unused-import
 
 from typing import TYPE_CHECKING
 
@@ -19,9 +19,9 @@ def get_model_and_loss(
   """Returns an instantiated (potentially experimental) model."""
 
   # default model and configs
-  model_cls = model.TransformerDo
-  model_cfg = model.DoConfig
+  m = model
   get_loss_fn = loss_lib.get_default_loss_fn
 
-  cfg = model_cfg(**c.model, V=vocab_size)
-  return model_cls(cfg), get_loss_fn
+  cfg = m.DoConfig(**c.model, V=vocab_size)  # pytype:disable=attribute-error
+  module = m.TransformerDo(cfg)  # pytype:disable=attribute-error
+  return module, get_loss_fn
