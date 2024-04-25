@@ -27,6 +27,10 @@ classifiers = [
     "Environment :: Console",
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: Apache Software License",
+    # TODO: add support for python 3.12 after
+    # https://github.com/tensorflow/datasets/issues/4666
+    # https://github.com/google/array_record/issues/94
+    # are fixed.
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Operating System :: MacOS',
@@ -71,5 +75,6 @@ test = [
 ]
 
 [tool.setuptools.packages.find]
+where = ["nanodo"]
 include = ["README.md", "LICENSE"]
 exclude = ["*_test.py"]
