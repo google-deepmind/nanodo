@@ -15,15 +15,16 @@ jax.config.parse_flags_with_absl()
 jax.config.update("jax_numpy_rank_promotion", "raise")
 
 
-def _get_test_opt_config():
-  c = ml_collections.ConfigDict()
-  c.num_train_steps = 10_000
-  c.peak_learning_rate = 0.01
-  c.init_learning_rate = 0.001
-  c.final_learning_rate = 0.0001
-  c.warmup_steps = 10
-  c.decay_steps = 100
-  c.weight_decay = 0.1
+def _get_test_opt_config() -> ml_collections.ConfigDict:
+  c = ml_collections.config_dict.create(
+      num_train_steps=10_000,
+      peak_learning_rate=0.01,
+      init_learning_rate=0.001,
+      final_learning_rate=0.0001,
+      warmup_steps=10,
+      decay_steps=100,
+      weight_decay=0.1,
+  )
   return c
 
 

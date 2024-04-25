@@ -20,7 +20,7 @@ jax.config.update('jax_numpy_rank_promotion', 'raise')
 class ModelTest(parameterized.TestCase):
 
   def _default_output(self, rng):
-    """Setup an example input, output, params and config."""
+    """Set up an example input, output, params and config."""
     B, L = (2, 128)
     # default model
     cfg = default_model.DoConfig(D=16, H=4, L=L, N=4, V=256, F=4 * 4)
@@ -32,8 +32,6 @@ class ModelTest(parameterized.TestCase):
     params = m.init(spl, x_BxL)
     default_model_out = m.apply(params, x_BxL)
 
-    # equality test for experimental models
-    # first set up config
     c = default.get_config()
     c.model.D = cfg.D
     c.model.H = cfg.H

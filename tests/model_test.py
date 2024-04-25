@@ -49,7 +49,7 @@ class ModelTest(chex.TestCase):
        token should be non-zero. This ensures we are looking at previous tokens
        and their positions to infer this token.
     2. The gradients at X should be non-zero: for next-token prediction, we
-       slide our window one step at a time. Thus the input at X is predicting
+       slide our window one step at a time. Thus, the input at X is predicting
        the output at X.
     3. The gradients after X should be strictly zero: the output at X should not
        use information from the future to predict itself.

@@ -71,8 +71,8 @@ class TrainTest(parameterized.TestCase):
   @parameterized.parameters(True, False)
   def test_trainer(self, fsdp_enabled: bool = False):
     c = _get_config()
-    cfg = model.DoConfig(
-        D=16, H=4, L=16, N=2, V=100, F=2, fsdp_enabled=fsdp_enabled)
+    cfg = model.DoConfig(**c.model, V=c.V)
+    cfg.fsdp_enabled = fsdp_enabled
     m = model.TransformerDo(cfg)
     rng = jax.random.PRNGKey(42)
     mesh = Mesh(mesh_utils.create_device_mesh((jax.device_count(),)), ("data",))
@@ -83,14 +83,7 @@ class TrainTest(parameterized.TestCase):
 
   def test_train_step(self):
     c = _get_config()
-    docfg = model.DoConfig(
-        D=c.model.D,
-        H=c.model.H,
-        L=c.model.L,
-        N=c.model.N,
-        V=c.V,
-        F=c.model.F,
-    )
+    docfg = model.DoConfig(**c.model, V=c.V)
     m = model.TransformerDo(docfg)
     init_rng, data_rng = jax.random.split(jax.random.PRNGKey(42))
     in_BxL = jax.random.randint(
@@ -162,14 +155,7 @@ class TrainTest(parameterized.TestCase):
     c = _get_config()
     c.checkpoint = True
 
-    cfg = model.DoConfig(
-        D=c.model.D,
-        H=c.model.H,
-        L=c.model.L,
-        N=c.model.N,
-        V=c.V,
-        F=c.model.F,
-    )
+    cfg = model.DoConfig(**c.model, V=c.V)
     m = model.TransformerDo(cfg)
     rng = jax.random.PRNGKey(42)
     mesh = Mesh(mesh_utils.create_device_mesh((jax.device_count(),)), ("data",))
@@ -205,16 +191,17 @@ class TrainTest(parameterized.TestCase):
 
   def test_train_step_remat(self):
     c = _get_config()
-    docfg = model.DoConfig(
-        D=128, H=16, L=256, N=4, V=1024, F=4 * 4, remat=False)
+
+    docfg = model.DoConfig(**c.model, V=c.V)
+    docfg.remat = False
     m = model.TransformerDo(docfg)
-    docfg_remat = model.DoConfig(
-        D=128, H=16, L=256, N=4, V=1024, F=4 * 4, remat=True
-    )
+
+    docfg_remat = model.DoConfig(**c.model, V=c.V)
+    docfg_remat.remat = False
     m_remat = model.TransformerDo(docfg_remat)
 
     init_rng = jax.random.PRNGKey(42)
-    in_BxL = jax.random.categorical(init_rng, jnp.ones((16, 256, 1024)))
+    in_BxL = jax.random.categorical(init_rng, jnp.ones((16, c.model.L, c.V)))
     initial_variables = jax.jit(m.init)(
         init_rng,
         in_BxL,

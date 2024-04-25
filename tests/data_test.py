@@ -1,9 +1,8 @@
 """Tests for `../data.py`."""
 
-# pylint: disable=invalid-name,g-import-not-at-top
+# pylint: disable=invalid-name
 
 import os
-from typing import TYPE_CHECKING
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -12,13 +11,9 @@ import grain.python as grain
 import jax
 import jax.numpy as jnp
 from nanodo import data
-from nanodo.configs import default
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
-if TYPE_CHECKING:
-  import ml_collections
 
 
 jax.config.parse_flags_with_absl()
@@ -36,15 +31,6 @@ def _get_spm():
   return data.get_tokenizer(_get_vocab_path())
 
 
-def _get_config() -> "ml_collections.ConfigDict":
-  """Get the default hyperparameter configuration."""
-  c = default.get_config()
-  c.opt.num_train_steps = 1
-  c.batch_size = 2
-  c.eval_steps = 1
-  return c
-
-
 def _assert_grain_records(records: list[grain.Record], expected: np.ndarray):
   actual = [r.data for r in records]
   np.testing.assert_equal(actual, expected)
@@ -58,18 +44,20 @@ class DataTest(parameterized.TestCase):
     self.assertIsNotNone(ds)
 
   def test_text_preprocess_batched(self):
-    with tfds.testing.mock_data(num_examples=100):
+    num_examples = 100
+    with tfds.testing.mock_data(num_examples=num_examples):
       ds = tfds.load("lm1b", split="train")
-      c = _get_config()
+      context_length = 512
+      batch_size = 2
       ds = data.text_preprocess_batched(
           ds,
           _get_spm(),
-          context_length=c.eval_max_target_length,
-          batch_size=c.batch_size,
+          context_length=context_length,
+          batch_size=batch_size,
       )
       all_ds = list(ds)
-      self.assertLen(all_ds, 50)
-      self.assertEqual((2, c.eval_max_target_length), all_ds[0].shape)
+      self.assertLen(all_ds, num_examples // batch_size)
+      self.assertEqual((batch_size, context_length), all_ds[0].shape)
 
   def test_noam_pack(self):
     ds = tf.data.experimental.from_list(

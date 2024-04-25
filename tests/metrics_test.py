@@ -33,7 +33,7 @@ def _get_config() -> "ml_collections.ConfigDict":
   c.eval_steps = 1
   c.V = 32
 
-  c.model.L = 64
+  c.model.L = 256
   c.model.D = 32
   c.model.F = 128
   c.model.N = 2
@@ -84,10 +84,10 @@ class MetricsTest(parameterized.TestCase):
 
   def test_aggregate_microbatch_metrics(self):
     c = _get_config()
-    docfg = model.DoConfig(D=128, H=16, L=256, N=4, V=1024, F=4 * 4)
+    docfg = model.DoConfig(**c.model, V=c.V)
     m = model.TransformerDo(docfg)
     init_rng = jax.random.PRNGKey(42)
-    in_BxL = jax.random.categorical(init_rng, jnp.ones((16, 256, 1024)))
+    in_BxL = jax.random.categorical(init_rng, jnp.ones((16, c.model.L, c.V)))
 
     initial_variables = jax.jit(m.init)(
         init_rng,
