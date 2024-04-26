@@ -34,7 +34,7 @@ jax.config.update("jax_numpy_rank_promotion", "raise")
 _VOCAB_PATH = "testdata/sentencepiece_cc_all.32000.100extra-sentencepiece.model"
 
 
-def _get_config() -> "ml_collections.ConfigDict":
+def _get_config(self: parameterized.TestCase) -> "ml_collections.ConfigDict":
   """Get the default hyperparameter configuration."""
   c = default.get_config()
   c.vocab_path = os.path.join(os.path.dirname(__file__), _VOCAB_PATH)
@@ -63,6 +63,7 @@ def _get_config() -> "ml_collections.ConfigDict":
   c.model.N = 2
   c.model.H = 4
 
+  c.workdir = self.create_tempdir().full_path
   return c
 
 
@@ -70,7 +71,7 @@ class TrainTest(parameterized.TestCase):
 
   @parameterized.parameters(True, False)
   def test_trainer(self, fsdp_enabled: bool = False):
-    c = _get_config()
+    c = _get_config(self)
     cfg = model.DoConfig(**c.model, V=c.V)
     cfg.fsdp_enabled = fsdp_enabled
     m = model.TransformerDo(cfg)
@@ -82,7 +83,7 @@ class TrainTest(parameterized.TestCase):
     self.assertEqual(t.step, 0)
 
   def test_train_step(self):
-    c = _get_config()
+    c = _get_config(self)
     docfg = model.DoConfig(**c.model, V=c.V)
     m = model.TransformerDo(docfg)
     init_rng, data_rng = jax.random.split(jax.random.PRNGKey(42))
@@ -152,7 +153,7 @@ class TrainTest(parameterized.TestCase):
     if jax.default_backend() == "cpu":
       self.skipTest("Skipping slow tests on CPU.")
 
-    c = _get_config()
+    c = _get_config(self)
     c.checkpoint = True
 
     cfg = model.DoConfig(**c.model, V=c.V)
@@ -160,7 +161,7 @@ class TrainTest(parameterized.TestCase):
     rng = jax.random.PRNGKey(42)
     mesh = Mesh(mesh_utils.create_device_mesh((jax.device_count(),)), ("data",))
     _, state = train._init_train_state(c, m, rng, mesh)
-    ckpt_dir = self.create_tempdir().full_path
+    ckpt_dir = c.workdir
     with tfds.testing.mock_data(num_examples=100):
       train_iter = data.py_batched_tfds(
           tfds_name=c.ds_name,
@@ -172,7 +173,7 @@ class TrainTest(parameterized.TestCase):
           num_epochs=c.train_epochs,
           preprocessing=preprocessing,
       )
-      train.train_and_evaluate(c, ckpt_dir)
+      train.train_and_evaluate(c)
 
       ckpt_mngr = train._get_ckpt_manager(ckpt_dir, c)
 
@@ -183,14 +184,14 @@ class TrainTest(parameterized.TestCase):
 
       logging.info("Trigger restore, check step is updated.")
       c.opt.num_train_steps = 2
-      train.train_and_evaluate(c, ckpt_dir)
+      train.train_and_evaluate(c)
       ckpt_mngr = train._get_ckpt_manager(ckpt_dir, c)
       self.assertEqual(ckpt_mngr.latest_step(), 2)
       restored_state, _ = train._restore_ckpt(ckpt_mngr, state, train_iter)
       self.assertEqual(restored_state.step, 2)
 
   def test_train_step_remat(self):
-    c = _get_config()
+    c = _get_config(self)
 
     docfg = model.DoConfig(**c.model, V=c.V)
     docfg.remat = False

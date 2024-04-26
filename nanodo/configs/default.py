@@ -16,9 +16,8 @@ def get_config() -> ml_collections.ConfigDict:
   cfg.batch_size = 256  # Global batch size. Must be divisible by the #devices.
   cfg.train_epochs = None  # None=>infinite
   cfg.ds_name = "lm1b:1.1.0"
+  # TODO: replace with a path accessible in OSS.
   cfg.vocab_path = "/cns/rs-d/home/pagi/vocabs/cc_all.32000.100extra.bos.model"
-  # Same as /bigstore/t5-data/vocabs/cc_all.32000.100extra/sentencepiece.model,
-  # but with BOS at position 2.
 
   # Transformer
   cfg.model = ml_collections.config_dict.create(
@@ -46,6 +45,7 @@ def get_config() -> ml_collections.ConfigDict:
   )
 
   # Checkpointing
+  cfg.workdir = "/tmp/nanodo"  # logs, checkpoints.
   cfg.checkpoint = True
   cfg.checkpoint_every_steps = 2000
   # Path to the checkpoint to be restored. Note than new checkpoints will be
@@ -75,9 +75,4 @@ def get_config() -> ml_collections.ConfigDict:
   # always prefetch another batch
   cfg.pygrain_worker_buffer_size = 2
 
-  # Hardware / scheduling requirements. If not set or set to `""` or `0`, flags
-  # passed to `xm_launch.py` are used.
-  cfg.platform = ""
-  cfg.priority = 0
-  cfg.cell = ""
   return cfg

@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 PyTree = Any
 
 
-def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
+def train_and_evaluate(c: "ml_collections.ConfigDict"):
   """Train loop."""
 
   # Prevent tensorflow from fragmenting GPU memory.
@@ -61,7 +61,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
   if micro_batch_size % jax.device_count() != 0:
     raise ValueError("Batch size must be divisible by the number of devices.")
 
-  tf.io.gfile.makedirs(workdir)
+  tf.io.gfile.makedirs(c.workdir)
   rng = jax.random.PRNGKey(c.seed)
 
   tokenizer = data.get_tokenizer(c.vocab_path)
@@ -87,7 +87,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
   )
 
   if c.checkpoint:
-    ckpt_mngr = _get_ckpt_manager(workdir, c)
+    ckpt_mngr = _get_ckpt_manager(c.workdir, c)
     if c.checkpoint_restore_dir is not None:
       logging.info("Restoring checkpoint from %s", c.checkpoint_restore_dir)
       ex_ckpt_mngr = _get_ckpt_manager(c.checkpoint_restore_dir, c)
@@ -95,7 +95,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
 
     elif ckpt_mngr.latest_step() is not None:
       latest_step = ckpt_mngr.latest_step()
-      logging.info("Restoring checkpoint %d from %s", latest_step, workdir)
+      logging.info("Restoring checkpoint %d from %s", latest_step, c.workdir)
       state, train_iter = _restore_ckpt(ckpt_mngr, state, train_iter)
 
   trainer = Trainer(
@@ -134,7 +134,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
   evaluator = evaluate.Evaluator(c, model, eval_ds, mesh, shardings)
 
   writer = metric_writers.create_default_writer(
-      workdir,
+      c.workdir,
       just_logging=jax.process_index() > 0,
       write_to_xm_measurements=c.get("write_to_xm_measurements", True),
       write_to_datatable=True
@@ -153,7 +153,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict", workdir: str):
   if jax.process_index() == 0:
     hooks = [
         report_progress,
-        periodic_actions.Profile(logdir=workdir, num_profile_steps=5),
+        periodic_actions.Profile(logdir=c.workdir, num_profile_steps=5),
     ]
   else:
     hooks = []
