@@ -1,6 +1,6 @@
 """Training loop."""
 
-# pylint: disable=invalid-name,g-importing-member,g-import-not-at-top
+# pylint: disable=invalid-name,g-importing-member,g-import-not-at-top,unused-import
 
 import functools
 import time
@@ -319,7 +319,7 @@ def _train_step(
 
 def _init_train_state(
     c: "ml_collections.ConfigDict",
-    model: nn.Module,
+    module: nn.Module,
     rng: jax.Array,
     mesh: Mesh,
 ) -> tuple[PyTree, TrainState]:
@@ -327,9 +327,9 @@ def _init_train_state(
   inputs = jax.ShapeDtypeStruct(shape=(1, c.model.L), dtype=jnp.int32)
 
   def init(rng, inputs):
-    params = model.init(rng, inputs)
+    params = module.init(rng, inputs)
     return TrainState.create(
-        apply_fn=model.apply,
+        apply_fn=module.apply,
         params=params["params"],
         tx=optimizer.get_optimizer(c.opt),
     )
