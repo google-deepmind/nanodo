@@ -1,3 +1,16 @@
+# Copyright 2024 DeepMind Technologies Limited.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Tests for `../data.py`."""
 
 # pylint: disable=invalid-name
@@ -38,26 +51,19 @@ def _assert_grain_records(records: list[grain.Record], expected: np.ndarray):
 
 class DataTest(parameterized.TestCase):
 
-  def test_get_data(self):
-    with tfds.testing.mock_data(num_examples=5):
-      ds = data.get_data("mnist", split="train")
-    self.assertIsNotNone(ds)
-
-  def test_text_preprocess_batched(self):
+  def test_py_batched_tfds_for_eval(self):
     num_examples = 100
     with tfds.testing.mock_data(num_examples=num_examples):
-      ds = tfds.load("lm1b", split="train")
       context_length = 512
       batch_size = 2
-      ds = data.text_preprocess_batched(
-          ds,
-          _get_spm(),
-          context_length=context_length,
+      ds = data.py_batched_tfds_for_eval(
+          tfds_name="lm1b",
+          split="train",
+          tokenizer=_get_spm(),
           batch_size=batch_size,
+          context_length=context_length,
       )
-      all_ds = list(ds)
-      self.assertLen(all_ds, num_examples // batch_size)
-      self.assertEqual((batch_size, context_length), all_ds[0].shape)
+      self.assertEqual((batch_size, context_length), next(ds).shape)
 
   def test_noam_pack(self):
     ds = tf.data.experimental.from_list(

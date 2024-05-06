@@ -1,3 +1,16 @@
+# Copyright 2024 DeepMind Technologies Limited.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Training loop."""
 
 # pylint: disable=invalid-name,g-importing-member,g-import-not-at-top,unused-import
@@ -119,17 +132,12 @@ def train_and_evaluate(c: "ml_collections.ConfigDict"):
     raise ValueError(
         "Eval Batch size must be divisible by the number of devices.")
 
-  # TODO: Also use pygrain for eval data; remove tf.data.
-  eval_ds = data.get_data(
-      c.ds_name,
-      c.eval_split,
-      functools.partial(
-          data.text_preprocess_batched,  # Different from training
-          tokenizer=tokenizer,
-          batch_size=eval_batch_size,
-          context_length=c.eval_max_target_length,
-          shuffle=False,
-      ),
+  eval_ds = data.py_batched_tfds_for_eval(
+      tfds_name=c.ds_name,
+      split=c.eval_split,
+      tokenizer=tokenizer,
+      batch_size=eval_batch_size,
+      context_length=c.eval_max_target_length,
   )
   evaluator = evaluate.Evaluator(c, model, eval_ds, mesh, shardings)
 

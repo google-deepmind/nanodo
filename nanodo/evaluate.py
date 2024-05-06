@@ -1,3 +1,16 @@
+# Copyright 2024 DeepMind Technologies Limited.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Functions to evaluate nanodo runs."""
 
 # pylint: disable=invalid-name,g-importing-member,g-import-not-at-top
@@ -5,7 +18,7 @@
 import functools
 import math
 import os
-from typing import Any, TYPE_CHECKING
+from typing import Any, Iterator, TYPE_CHECKING
 
 from absl import logging
 import jax
@@ -14,13 +27,13 @@ from jax.sharding import NamedSharding
 from jax.sharding import PartitionSpec as P
 from nanodo import data
 from nanodo import metrics as metrics_lib
+import numpy as np
 from optax import losses
 
 
 if TYPE_CHECKING:
   from flax import linen as nn
   import ml_collections
-  import tensorflow as tf
 
 
 PyTree = Any
@@ -53,7 +66,7 @@ class Evaluator:
       self,
       c: "ml_collections.ConfigDict",
       model: "nn.Module",
-      eval_ds: "tf.data.Dataset",
+      eval_ds: "Iterator[np.ndarray]",
       mesh: Mesh,
       shardings: PyTree,
   ):
@@ -76,7 +89,7 @@ class Evaluator:
     metrics = metrics_lib.Average()
     pending_metrics = metrics_lib.Average()
     i = 0
-    for i, batch in enumerate(self.ds.as_numpy_iterator()):
+    for i, batch in enumerate(self.ds):
       new_metrics = self.step_fn(params, batch)  # Async dispatch new step.
       # Get previous step's results and merge with metrics.
       metrics = metrics.merge(jax.device_get(pending_metrics))

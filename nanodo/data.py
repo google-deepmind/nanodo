@@ -1,9 +1,23 @@
+# Copyright 2024 DeepMind Technologies Limited.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Data pipeline."""
 
+from collections.abc import Sequence
 import dataclasses
 import enum
 import functools
-from typing import Callable, Iterator
+from typing import Iterator
 
 import grain.python as grain
 import jax
@@ -78,6 +92,64 @@ def py_batched_tfds(
   return iter(batched_dataloader)
 
 
+def py_batched_tfds_for_eval(
+    *,
+    tfds_name: str,
+    split: str,
+    tokenizer: tftxt.SentencepieceTokenizer,
+    batch_size: int,
+    context_length: int,
+) -> Iterator[np.ndarray]:
+  """Returns iterator for batched eval datasets."""
+  data_source = tfds.data_source(tfds_name, split=split)
+  sampler = grain.IndexSampler(
+      num_records=len(data_source),
+      shard_options=grain.NoSharding(),
+      shuffle=False,
+  )
+  operations = text_preprocess_batched_operations(
+      tokenizer=tokenizer,
+      context_length=context_length,
+      batch_size=batch_size,
+  )
+  batched_dataloader = grain.DataLoader(
+      data_source=data_source,
+      operations=operations,
+      sampler=sampler,
+      # The tokenizer is not serializable, so we don't use multiprocessing. This
+      # shouldn't be a problem for the eval with simple transformations.
+      worker_count=0,
+  )
+  return iter(batched_dataloader)
+
+
+def _pad_or_crop(x: np.ndarray, *, context_length: int) -> np.ndarray:
+  """Either pads or crops the tokenized text input to context_length."""
+  if len(x.shape) != 1:
+    raise ValueError(f'Expected 1D array of tokenized text, got {x.shape}')
+  if len(x) < context_length:
+    pad_width = [(0, context_length - len(x))]
+    return np.pad(x, pad_width, mode='constant', constant_values=PAD_ID)
+  else:
+    return x[:context_length]
+
+
+def text_preprocess_batched_operations(
+    tokenizer: tftxt.SentencepieceTokenizer,
+    context_length: int,
+    batch_size: int,
+) -> Sequence[grain.Operation | grain.Transformation]:
+  """Returns all operations to produce batched text tokens."""
+  operations = []
+  operations.append(
+      grain.MapOperation(map_function=lambda x: tokenizer.tokenize(x['text']))
+  )
+  pad_or_crop = functools.partial(_pad_or_crop, context_length=context_length)
+  operations.append(grain.MapOperation(map_function=pad_or_crop))
+  operations.append(grain.Batch(batch_size=batch_size, drop_remainder=False))
+  return operations
+
+
 ### TF / tf.data helpers (to be deprecated) ###
 
 
@@ -91,47 +163,6 @@ def get_tokenizer(model_path: str) -> tftxt.SentencepieceTokenizer:
   assert sp_tokenizer.string_to_id('<s>') == BOS_ID
   assert sp_tokenizer.string_to_id('<pad>') == PAD_ID
   return sp_tokenizer
-
-
-def get_data(
-    tfds_name: str,
-    split: str,
-    preprocess_fn: Callable[..., tf.data.Dataset] | None = None,
-) -> tf.data.Dataset:
-  """Returns ds with batched text tokens."""
-  ds = tfds.load(tfds_name, split=tfds.split_for_jax_process(split)).prefetch(
-      tf.data.AUTOTUNE
-  )
-  if preprocess_fn is not None:
-    ds = preprocess_fn(ds)
-  return ds
-
-
-def text_preprocess_batched(
-    ds: tf.data.Dataset,
-    tokenizer: tftxt.SentencepieceTokenizer,
-    context_length: int,
-    batch_size: int,
-    shuffle: bool = True,
-    buffer_size: int = 100_000,
-    drop_remainder: bool = False,
-) -> tf.data.Dataset:
-  """Returns ds with batched text tokens."""
-  ds = ds.map(
-      lambda x: tokenizer.tokenize(x['text']),
-      num_parallel_calls=tf.data.AUTOTUNE,
-  )
-  ds = ds.map(lambda x: x[:context_length])  # truncate
-  if shuffle:
-    ds = ds.shuffle(buffer_size, reshuffle_each_iteration=True)
-  # Simple batching, inefficient because a lot of zeros
-  ds = ds.padded_batch(
-      batch_size,
-      padded_shapes=context_length,
-      padding_values=0,
-      drop_remainder=drop_remainder,
-  )
-  return ds
 
 
 def text_preprocess_packed(
