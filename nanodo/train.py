@@ -144,8 +144,6 @@ def train_and_evaluate(c: "ml_collections.ConfigDict"):
   writer = metric_writers.create_default_writer(
       c.workdir,
       just_logging=jax.process_index() > 0,
-      write_to_xm_measurements=c.get("write_to_xm_measurements", True),
-      write_to_datatable=True
   )
   if trainer.step == 0:
     writer.write_hparams(dict(c))

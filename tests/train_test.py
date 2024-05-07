@@ -163,11 +163,10 @@ class TrainTest(parameterized.TestCase):
 
   @parameterized.parameters(data.Preprocess.NOAM_PACKED, data.Preprocess.PADDED)
   def test_train_and_evaluate(self, preprocessing):
-    if jax.default_backend() == "cpu":
-      self.skipTest("Skipping slow tests on CPU.")
 
     c = _get_config(self)
     c.checkpoint = True
+    c.pygrain_worker_count = 0
 
     cfg = model.DoConfig(**c.model, V=c.V)
     m = model.TransformerDo(cfg)
