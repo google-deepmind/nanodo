@@ -89,7 +89,7 @@ class Evaluator:
     metrics = metrics_lib.Average()
     pending_metrics = metrics_lib.Average()
     i = 0
-    for i, batch in enumerate(self.ds):
+    for i, batch in enumerate(iter(self.ds)):
       new_metrics = self.step_fn(params, batch)  # Async dispatch new step.
       # Get previous step's results and merge with metrics.
       metrics = metrics.merge(jax.device_get(pending_metrics))

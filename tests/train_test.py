@@ -175,7 +175,7 @@ class TrainTest(parameterized.TestCase):
     _, state = train._init_train_state(c, m, rng, mesh)
     ckpt_dir = c.workdir
     with tfds.testing.mock_data(num_examples=100):
-      train_iter = data.py_batched_tfds(
+      train_ds = data.py_batched_tfds(
           tfds_name=c.ds_name,
           split="train",
           context_size=c.model.L,
@@ -185,6 +185,7 @@ class TrainTest(parameterized.TestCase):
           num_epochs=c.train_epochs,
           preprocessing=preprocessing,
       )
+      train_iter = iter(train_ds)
       train.train_and_evaluate(c)
 
       ckpt_mngr = train._get_ckpt_manager(ckpt_dir, c)

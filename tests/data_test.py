@@ -25,7 +25,6 @@ import jax
 import jax.numpy as jnp
 from nanodo import data
 import numpy as np
-import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
@@ -51,38 +50,20 @@ def _assert_grain_records(records: list[grain.Record], expected: np.ndarray):
 
 class DataTest(parameterized.TestCase):
 
-  def test_py_batched_tfds_for_eval(self):
+  def test_py_batched_tfds(self):
     num_examples = 100
     with tfds.testing.mock_data(num_examples=num_examples):
-      context_length = 512
+      context_size = 512
       batch_size = 2
-      ds = data.py_batched_tfds_for_eval(
+      ds = data.py_batched_tfds(
           tfds_name="lm1b",
           split="train",
-          tokenizer=_get_spm(),
+          context_size=context_size,
+          worker_count=0,
+          vocab_path=_get_vocab_path(),
           batch_size=batch_size,
-          context_length=context_length,
       )
-      self.assertEqual((batch_size, context_length), next(ds).shape)
-
-  def test_noam_pack(self):
-    ds = tf.data.experimental.from_list(
-        [[2, 3, 4, 1], [5, 6, 7, 8, 9, 10, 11, 1]]
-    )
-    ds4 = data._noam_pack(ds, 4)
-    np.testing.assert_equal(
-        list(ds4.as_numpy_iterator()),
-        [[2, 3, 4, 1], [5, 6, 7, 8], [9, 10, 11, 1]],
-    )
-
-    ds = tf.data.experimental.from_list(
-        [[2, 3, 4, 1], [12, 13, 14, 1], [5, 6, 7, 8, 9, 10, 11, 1]]
-    )
-    ds8 = data._noam_pack(ds, 8)
-    np.testing.assert_equal(
-        list(ds8.as_numpy_iterator()),
-        [[2, 3, 4, 1, 12, 13, 14, 1], [5, 6, 7, 8, 9, 10, 11, 1]],
-    )
+      self.assertEqual((batch_size, context_size), next(iter(ds)).shape)
 
   def test_py_noam_pack(self):
     records = [[2, 3, 4, 1], [5, 6, 7, 8, 9, 10, 11, 1]]
@@ -96,14 +77,9 @@ class DataTest(parameterized.TestCase):
         np.array([[2, 3, 4, 1], [5, 6, 7, 8], [9, 10, 11, 1]]),
     )
 
-  def test_multi_epoch_gen(self):
-    ds = tf.data.Dataset.from_tensor_slices([1, 2, 3])
-    self.assertLen(list(data._multi_epoch_ds_gen(ds, 1)), 3)
-    self.assertLen(list(data._multi_epoch_ds_gen(ds, 2)), 6)
-
   def test_py_batched_tfds_noam_packed(self):
     with tfds.testing.mock_data():
-      it = data.py_batched_tfds(
+      ds = data.py_batched_tfds(
           tfds_name="lm1b",
           split="train",
           context_size=1024,
@@ -113,6 +89,7 @@ class DataTest(parameterized.TestCase):
           num_records=10,
           preprocessing=data.Preprocess.NOAM_PACKED,
       )
+      it = iter(ds)
       b = next(it)
       self.assertEqual(b.shape, (2, 1024))
       self.assertEqual(np.sum(b == data.PAD_ID), 0)
@@ -122,7 +99,7 @@ class DataTest(parameterized.TestCase):
 
   def test_py_batched_tfds_padded(self):
     with tfds.testing.mock_data():
-      it = data.py_batched_tfds(
+      ds = data.py_batched_tfds(
           tfds_name="lm1b",
           split="train",
           context_size=1024,
@@ -132,6 +109,7 @@ class DataTest(parameterized.TestCase):
           num_records=10,
           preprocessing=data.Preprocess.PADDED,
       )
+      it = iter(ds)
       b = next(it)
       self.assertEqual(b.shape, (2, 1024))
       self.assertGreater(np.sum(b == data.PAD_ID), 0)  # sanity check

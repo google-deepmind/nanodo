@@ -87,7 +87,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict"):
   init_time = time.time() - tic
   logging.info("[TIMING]: get_new_state (jit init) time: %.2fs", init_time)
 
-  train_iter = data.py_batched_tfds(
+  train_ds = data.py_batched_tfds(
       tfds_name=c.ds_name,
       split="train",
       context_size=c.model.L,
@@ -98,6 +98,7 @@ def train_and_evaluate(c: "ml_collections.ConfigDict"):
       preprocessing=data.Preprocess.NOAM_PACKED,
       worker_buffer_size=c.pygrain_worker_buffer_size,
   )
+  train_iter = iter(train_ds)
 
   if c.checkpoint:
     ckpt_mngr = _get_ckpt_manager(c.workdir, c)
@@ -132,12 +133,17 @@ def train_and_evaluate(c: "ml_collections.ConfigDict"):
     raise ValueError(
         "Eval Batch size must be divisible by the number of devices.")
 
-  eval_ds = data.py_batched_tfds_for_eval(
+  eval_ds = data.py_batched_tfds(
       tfds_name=c.ds_name,
       split=c.eval_split,
-      tokenizer=tokenizer,
+      context_size=c.model.L,
+      worker_count=c.pygrain_worker_count,
+      vocab_path=c.vocab_path,
       batch_size=eval_batch_size,
-      context_length=c.eval_max_target_length,
+      num_epochs=1,
+      num_records=None,
+      preprocessing=data.Preprocess.PADDED,
+      shuffle=False,
   )
   evaluator = evaluate.Evaluator(c, model, eval_ds, mesh, shardings)
 
