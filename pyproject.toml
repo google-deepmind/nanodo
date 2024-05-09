@@ -27,10 +27,12 @@ classifiers = [
     "Environment :: Console",
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: Apache Software License",
+    # copybara:strip_begin(internal)
     # TODO: add support for python 3.12 after
     # https://github.com/tensorflow/datasets/issues/4666
     # https://github.com/google/array_record/issues/94
     # are fixed.
+    # copybara:strip_end
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Operating System :: MacOS',
@@ -63,10 +65,10 @@ dependencies = [
     "tensorflow_text>=2.16.1",
 ]
 
-# TODO: confirm location before OSSing.
+# TODO: confirm locations and URLs
 [project.urls]
-homepage = "https://github.com/google-deepmind/nanodo"
-repository = "https://github.com/google-deepmind/nanodo"
+homepage = "https://github.com/google-research/nanodo"
+repository = "https://github.com/google-research/nanodo"
 documentation = "https://nanodo.readthedocs.io/"
 
 [project.optional-dependencies]

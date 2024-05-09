@@ -124,7 +124,6 @@ class CausalAttn(nn.Module):
     assert cfg.D % cfg.H == 0, f'D {cfg.D} not divisible by H {cfg.H}'
     Dh = cfg.D // cfg.H
 
-    # TODO: Support flash attention
     # Maps D -> (H, Dh)
     multilinear = partial(
         nn.DenseGeneral,
@@ -140,8 +139,6 @@ class CausalAttn(nn.Module):
         multilinear(name='key')(x_BxLxD),
         multilinear(name='value')(x_BxLxD),
     )
-    # levskaya@: if you ever scale past 10B you might want to think about q/k
-    # layernorm for stability as ViT22B used (or other logit capping approach).
     q_BxLxHxDh /= Dh**0.5
     att_BxHxLxL = jnp.einsum('...qhd,...khd->...hqk', q_BxLxHxDh, k_BxLxHxDh)
     # cast to fp32 for softmax

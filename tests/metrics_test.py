@@ -192,14 +192,11 @@ class MetricsTest(parameterized.TestCase):
       memory_ref *= 2
 
     if jax.default_backend() != "tpu":
-      # TODO: understand TPU memory cost.
       self.assertEqual(costs["bytes accessed_lowered"], memory_ref)
 
     if jax.default_backend() != "gpu":
       # TODO: revisit after https://github.com/google/jax/issues/16008).
       self.assertEqual(costs["flops_compiled"], flops_ref)
-      # TODO: understand compiled memory cost.
-      # self.assertEqual(costs["bytes accessed_compiled"], memory_ref)
 
   def test_gaussian(self):
     rng = jax.random.PRNGKey(0)

@@ -1,5 +1,5 @@
-# NanoDO: Ultra-minimal ("nano-sized") Transformer decoder-only language model.
-Inspired by minGPT/nanoGPT and flax/examples we provide a minimal,
+# NanoDO: A minimal ("nano-sized") Transformer decoder-only language model.
+Inspired by minGPT/nanoGPT and flax/examples we provide a minimal
 implementation of a Transformer decoder-only language model in Jax.
 
 The purpose is to be maximally hackable, forkable, and readable for researchers,
@@ -11,7 +11,7 @@ Currently we use:
 
 *   flax for modules
 *   optax for optimization
-*   orbax for checkpointing.
+*   orbax for checkpointing
 *   pygrain for checkpointing training data iterator
 *   tf.data (soon to be deprecated) and TFDS for data
 *   ConfigDict for hyper-parameters.
@@ -48,5 +48,24 @@ We use Fully Sharded Data Parallel (FSDP) for parallelism. Model parameters
 and the optimizer state are sharded among the devices. These shardings are
 passed to jit, which is responsible for determining how to all-gather weights
 when necessary.
+
+## Setup (open-source)
+
+```
+python3.11 -m venv /tmp/nanodo_test_env
+source /tmp/nanodo_test_env/bin/activate
+cd [path_to_repo]
+pip install -e .
+
+# Run tests
+pip install pytest pytest-xdist
+PYTHONHASHSEED=0 pytest -n auto -rA
+
+# Run training.
+python nanodo/main.py \
+  --config=nanodo/configs/default.py \
+  --config.workdir=/tmp/nanodo_workdir \
+  --config.vocab_path=tests/testdata/sentencepiece_cc_all.32000.100extra-sentencepiece.model
+```
 
  

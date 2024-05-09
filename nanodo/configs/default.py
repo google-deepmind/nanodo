@@ -29,8 +29,7 @@ def get_config() -> ml_collections.ConfigDict:
   cfg.batch_size = 256  # Global batch size. Must be divisible by the #devices.
   cfg.train_epochs = None  # None=>infinite
   cfg.ds_name = "lm1b:1.1.0"
-  # TODO: replace with a path accessible in OSS.
-  cfg.vocab_path = "/cns/rs-d/home/pagi/vocabs/cc_all.32000.100extra.bos.model"
+  cfg.vocab_path = ""  # set to local-path
 
   # Transformer
   cfg.model = ml_collections.config_dict.create(
@@ -58,7 +57,7 @@ def get_config() -> ml_collections.ConfigDict:
   )
 
   # Checkpointing
-  cfg.workdir = "/tmp/nanodo"  # logs, checkpoints.
+  cfg.workdir = ""
   cfg.checkpoint = True
   cfg.checkpoint_every_steps = 2000
   # Path to the checkpoint to be restored. Note than new checkpoints will be

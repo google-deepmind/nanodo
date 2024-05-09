@@ -190,7 +190,6 @@ class TrainTest(parameterized.TestCase):
       ckpt_mngr = train._get_ckpt_manager(ckpt_dir, c)
 
       self.assertEqual(ckpt_mngr.latest_step(), 1)
-      # TODO: Check data iterator.
       restored_state, _ = train._restore_ckpt(ckpt_mngr, state, train_iter)
       self.assertEqual(restored_state.step, 1)
 
