@@ -22,9 +22,7 @@ import grain.python as grain
 import jax
 import jax.numpy as jnp
 import numpy as np
-import tensorflow as tf
 import tensorflow_datasets as tfds
-import tensorflow_text as tftxt
 
 import sentencepiece as spm
 
@@ -92,22 +90,7 @@ def py_batched_tfds(
   return batched_dataloader
 
 
-### TF / tf.data helpers (to be deprecated) ###
-
-
-def get_tokenizer(model_path: str) -> tftxt.SentencepieceTokenizer:
-  with tf.io.gfile.GFile(model_path, 'rb') as model_fp:
-    spmodel = model_fp.read()
-  sp_tokenizer = tftxt.SentencepieceTokenizer(
-      model=spmodel, add_bos=True, add_eos=True, reverse=False
-  )
-  assert sp_tokenizer.string_to_id('</s>') == EOS_ID
-  assert sp_tokenizer.string_to_id('<s>') == BOS_ID
-  assert sp_tokenizer.string_to_id('<pad>') == PAD_ID
-  return sp_tokenizer
-
-
-def _get_py_tokenizer(path: str) -> spm.SentencePieceProcessor:
+def get_py_tokenizer(path: str) -> spm.SentencePieceProcessor:
   sp = spm.SentencePieceProcessor()
   sp.Load(path)
   assert sp.bos_id() == BOS_ID
@@ -126,7 +109,7 @@ class _SPTokenizer:
 
   def get_tokenizer(self) -> spm.SentencePieceProcessor:
     if not self._tokenizer:
-      self._tokenizer = _get_py_tokenizer(self._vocab_path)
+      self._tokenizer = get_py_tokenizer(self._vocab_path)
     return self._tokenizer
 
 

@@ -40,7 +40,8 @@ from nanodo import optimizer
 import numpy as np
 import optax
 import orbax.checkpoint as ocp
-import tensorflow as tf
+
+import os
 
 
 if TYPE_CHECKING:
@@ -52,10 +53,6 @@ PyTree = Any
 
 def train_and_evaluate(c: "ml_collections.ConfigDict"):
   """Train loop."""
-
-  # Prevent tensorflow from fragmenting GPU memory.
-  # See https://jax.readthedocs.io/en/latest/gpu_memory_allocation.html.
-  tf.config.set_visible_devices([], "GPU")
 
   mesh = Mesh(mesh_utils.create_device_mesh((jax.device_count(),)), ("data",))
   # For multistep gradient accumulator to simulate large batch sizes.
@@ -74,11 +71,11 @@ def train_and_evaluate(c: "ml_collections.ConfigDict"):
   if micro_batch_size % jax.device_count() != 0:
     raise ValueError("Batch size must be divisible by the number of devices.")
 
-  tf.io.gfile.makedirs(c.workdir)
+  os.makedirs(c.workdir, exist_ok=True)
   rng = jax.random.PRNGKey(c.seed)
 
-  tokenizer = data.get_tokenizer(c.vocab_path)
-  vocab_size = tokenizer.vocab_size()
+  tokenizer = data.get_py_tokenizer(c.vocab_path)
+  vocab_size = tokenizer.GetPieceSize()
 
   model, get_loss_fn = model_factory.get_model_and_loss(c, vocab_size)
 

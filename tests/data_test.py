@@ -39,10 +39,6 @@ def _get_vocab_path():
   )
 
 
-def _get_spm():
-  return data.get_tokenizer(_get_vocab_path())
-
-
 def _assert_grain_records(records: list[grain.Record], expected: np.ndarray):
   actual = [r.data for r in records]
   np.testing.assert_equal(actual, expected)

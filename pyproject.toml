@@ -62,7 +62,6 @@ dependencies = [
     "sentencepiece>=0.2.0",
     "tensorflow-datasets>=4.9.4",
     "tensorflow>=2.16.1",
-    "tensorflow_text>=2.16.1",
 ]
 
 # TODO: confirm locations and URLs
