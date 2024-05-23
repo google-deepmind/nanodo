@@ -26,11 +26,7 @@ import tensorflow_datasets as tfds
 
 import sentencepiece as spm
 
-
 PAD_ID = 0
-EOS_ID = 1
-BOS_ID = 2
-
 ### pure python helpers for use with grain ###
 
 
@@ -69,7 +65,9 @@ def py_batched_tfds(
   pygrain_ops = [
       grain.MapOperation(
           map_function=functools.partial(
-              _py_tokenize, spt=spt, pad_id=PAD_ID, pad_len=pad_len
+              _py_tokenize,
+              spt=spt,
+              pad_len=pad_len,
           )
       )
   ]
@@ -93,9 +91,9 @@ def py_batched_tfds(
 def get_py_tokenizer(path: str) -> spm.SentencePieceProcessor:
   sp = spm.SentencePieceProcessor()
   sp.Load(path)
-  assert sp.bos_id() == BOS_ID
-  assert sp.eos_id() == EOS_ID
   assert sp.pad_id() == PAD_ID
+  assert sp.eos_id() != -1
+  assert sp.bos_id() != -1
   return sp
 
 
@@ -121,9 +119,13 @@ def _py_tokenize(
 ) -> list[int]:
   """Tokenizes text into ids, optionally pads or truncates to pad_len."""
   text = features['text']
-  ids = spt.get_tokenizer().EncodeAsIds(text)
-  ids.insert(0, BOS_ID)
-  ids.append(EOS_ID)
+  tokenizer = spt.get_tokenizer()
+  bos_id = tokenizer.bos_id()
+  eos_id = tokenizer.eos_id()
+  ids = tokenizer.EncodeAsIds(text)
+
+  ids.insert(0, bos_id)
+  ids.append(eos_id)
   if pad_len is not None:
     if len(ids) < pad_len:
       ids.extend([pad_id] * (pad_len - len(ids)))
@@ -165,15 +167,19 @@ class _NoamPack:
 # pylint: disable=invalid-name
 
 
-def get_in_out(in_BxL: jax.Array) -> tuple[jax.Array, jax.Array, jax.Array]:
+def get_in_out(
+    in_BxL: jax.Array,
+    pad_id: int = PAD_ID,
+) -> tuple[jax.Array, jax.Array, jax.Array]:
+  """Returns input, output, and weights for a batch of examples."""
   # Assumes input of the form <BOS> <IDs> <EOS> for eval.
   x_BxL = in_BxL
   y_BxL = jnp.pad(
       in_BxL[:, 1:],
       ((0, 0), (0, 1)),
       mode='constant',
-      constant_values=PAD_ID,
+      constant_values=pad_id,
   )
-  weights_BxL = jnp.where(y_BxL != PAD_ID, 1, 0).astype(jnp.float32)
+  weights_BxL = jnp.where(y_BxL != pad_id, 1, 0).astype(jnp.float32)
 
   return x_BxL, y_BxL, weights_BxL
