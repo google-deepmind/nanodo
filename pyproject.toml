@@ -64,10 +64,9 @@ dependencies = [
     "tensorflow>=2.16.1",
 ]
 
-# TODO: confirm locations and URLs
 [project.urls]
-homepage = "https://github.com/google-research/nanodo"
-repository = "https://github.com/google-research/nanodo"
+homepage = "https://github.com/google-deepmind/nanodo"
+repository = "https://github.com/google-deepmind/nanodo"
 documentation = "https://nanodo.readthedocs.io/"
 
 [project.optional-dependencies]

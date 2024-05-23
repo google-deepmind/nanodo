@@ -12,8 +12,7 @@ Currently we use:
 *   flax for modules
 *   optax for optimization
 *   orbax for checkpointing
-*   pygrain for checkpointing training data iterator
-*   tf.data (soon to be deprecated) and TFDS for data
+*   pygrain for data
 *   ConfigDict for hyper-parameters.
 
 Not currently supported or left out for simplicity:
@@ -61,11 +60,13 @@ pip install -e .
 pip install pytest pytest-xdist
 PYTHONHASHSEED=0 pytest -n auto -rA
 
-# Run training.
+# Run training example:
 python nanodo/main.py \
   --config=nanodo/configs/default.py \
   --config.workdir=/tmp/nanodo_workdir \
-  --config.vocab_path=tests/testdata/sentencepiece_cc_all.32000.100extra-sentencepiece.model
+  --config.vocab_path=tests/testdata/sentencepiece_cc_all.32000.100extra-sentencepiece.model \
+  --config.model.L=128 \
+  --config.batch_size=2
 ```
 
  
