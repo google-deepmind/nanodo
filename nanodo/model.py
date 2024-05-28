@@ -100,15 +100,15 @@ class TBlock(nn.Module):
 
   @nn.compact
   def __call__(self, in_BxLxD: jax.Array):
-    docfg = self.docfg
+    cfg = self.docfg
 
     # "pre-layernorm"
-    x_BxLxD = nn.LayerNorm(dtype=docfg.dtype, use_bias=False)(in_BxLxD)
-    x_BxLxD = CausalAttn(docfg)(x_BxLxD)
+    x_BxLxD = nn.LayerNorm(dtype=cfg.dtype, use_bias=False)(in_BxLxD)
+    x_BxLxD = CausalAttn(cfg)(x_BxLxD)
     x_BxLxD += in_BxLxD
 
-    z_BxLxD = nn.LayerNorm(dtype=docfg.dtype, use_bias=False)(x_BxLxD)
-    z_BxLxD = Mlp(docfg)(z_BxLxD)
+    z_BxLxD = nn.LayerNorm(dtype=cfg.dtype, use_bias=False)(x_BxLxD)
+    z_BxLxD = Mlp(cfg)(z_BxLxD)
 
     return x_BxLxD + z_BxLxD
 
