@@ -13,6 +13,7 @@
 # limitations under the License.
 """Data pipeline."""
 
+from collections.abc import Mapping, Sequence
 import dataclasses
 import enum
 import functools
@@ -112,11 +113,11 @@ class _SPTokenizer:
 
 
 def _py_tokenize(
-    features: dict[str, str],
+    features: Mapping[str, str],
     spt: _SPTokenizer,
     pad_len: int | None = None,
     pad_id: int = PAD_ID,
-) -> list[int]:
+) -> Sequence[int]:
   """Tokenizes text into ids, optionally pads or truncates to pad_len."""
   text = features['text']
   tokenizer = spt.get_tokenizer()

@@ -166,7 +166,6 @@ class TrainTest(parameterized.TestCase):
 
     c = _get_config(self)
     c.checkpoint = True
-    c.pygrain_worker_count = 0
 
     cfg = model.DoConfig(**c.model, V=c.V)
     m = model.TransformerDo(cfg)
