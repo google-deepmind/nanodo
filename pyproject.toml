@@ -5,7 +5,7 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "nanodo"
 dynamic = ["version"]
-description = "A minimal ('nano') decoder-only ('do') library in JAX."
+description = "A minimal ('nano') Transformer decoder-only ('do') library in JAX."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
