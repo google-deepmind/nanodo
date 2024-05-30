@@ -9,11 +9,12 @@ goal.
 
 Currently we use:
 
-*   flax for modules
-*   optax for optimization
-*   orbax for checkpointing
-*   pygrain for data
-*   ConfigDict for hyper-parameters.
+*   [flax](https://github.com/google/flax) for modules
+*   [optax](https://github.com/google-deepmind/optax) for optimization
+*   [orbax](https://github.com/google/orbax) for checkpointing
+*   [tfds](https://github.com/tensorflow/datasets) for data
+*   [pygrain](https://github.com/google/grain) for data loading
+*   [ConfigDict](https://github.com/google/ml_collections) for hyper-parameters.
 
 Not currently supported or left out for simplicity:
 

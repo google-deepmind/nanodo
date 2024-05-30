@@ -60,8 +60,7 @@ dependencies = [
     "optax>=0.2.2",
     "orbax>=0.1.7",
     "sentencepiece>=0.2.0",
-    # TODO: Temporary fix while waiting for TFDS to be released.
-    "tfds-nightly",
+    "tensorflow_datasets>=4.9.5",
     "tensorflow>=2.16.1",
 ]
 
