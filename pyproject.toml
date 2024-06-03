@@ -67,7 +67,7 @@ dependencies = [
 [project.urls]
 homepage = "https://github.com/google-deepmind/nanodo"
 repository = "https://github.com/google-deepmind/nanodo"
-documentation = "https://nanodo.readthedocs.io/"
+# documentation = "https://nanodo.readthedocs.io/"
 
 [project.optional-dependencies]
 test = [
