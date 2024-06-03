@@ -280,7 +280,6 @@ class Trainer:
     metrics = jax.device_get(metrics)
     if step == 0:
       metrics |= self.init_metrics
-    metrics["total_flops"] = self.init_metrics["flops_lowered"] * step
     return metrics
 
   def do_step(self, step: int, in_BxL: jax.Array) -> dict[str, float]:
@@ -288,8 +287,7 @@ class Trainer:
     # Note that the device may be busy with the previous step.
     # Avoid calling self.step as that would block until the device is ready.
     if step == 0 or self.init_metrics is None:
-      self.init_metrics = metrics_lib.get_init_metrics(
-          self.step_fn, self.state, in_BxL)
+      self.init_metrics = metrics_lib.get_init_metrics(self.state)
 
     self.state, metrics = self.step_fn(self.state, in_BxL)
     return metrics

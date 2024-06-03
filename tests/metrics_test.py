@@ -142,62 +142,6 @@ class MetricsTest(parameterized.TestCase):
     chex.assert_trees_all_close(
         state_single.opt_state, state_multistep.opt_state, rtol=1e-2, atol=1e-1)
 
-  @parameterized.product(
-      x_shape=(
-          (3, 10),
-          (5, 10)
-      ),
-      y_shape=(
-          (10, 2),
-          (10, 7)
-      ),
-      fn_and_cost_fn=(
-          (lambda x, y: x @ y,
-           # Cost of (n, m) @ (m, k) is (n m k) * 2 (multiplies and additions).
-           # Memory is storing reading two matrices + writing the result.
-           # Each 32-bit entry is 4 bytes.
-           lambda x, y: (  # pylint: disable=g-long-lambda
-               2 * x[0] * x[1] * y[1],
-               4 * ((x[0] * x[1]) + (y[0] * y[1]) + (x[0] * y[1])),
-           )
-           ),
-          (lambda x, y: jnp.maximum(x @ y, 0.),
-           # Cost of matmul + cost of ReLU = size of the output matrix.
-           # Memory is store all inputs (incl a scalar) + 5 * output size:
-           # 1) write and read the output of matmul
-           # 2) write and read a matrix of zeros
-           # 3) write a matrix of results
-           lambda x, y: (  # pylint: disable=g-long-lambda
-               2 * x[0] * x[1] * y[1] + x[0] * y[1],
-               4 * ((x[0] * x[1]) + (y[0] * y[1]) + 5 * (x[0] * y[1]) + 1),
-           )
-           ),
-      )
-  )
-  def test_get_flops(
-      self,
-      x_shape,
-      y_shape,
-      fn_and_cost_fn
-  ):
-    x = random.normal(random.PRNGKey(1), x_shape)
-    y = random.normal(random.PRNGKey(2), y_shape)
-
-    fn, cost_fn = fn_and_cost_fn
-    costs = metrics_lib._get_costs(fn, x, y)
-    flops_ref, memory_ref = cost_fn(x.shape, y.shape)
-    self.assertEqual(costs["flops_lowered"], flops_ref)
-
-    if jax.config.read("jax_enable_x64"):
-      memory_ref *= 2
-
-    if jax.default_backend() != "tpu":
-      self.assertEqual(costs["bytes accessed_lowered"], memory_ref)
-
-    if jax.default_backend() != "gpu":
-      # TODO: revisit after https://github.com/google/jax/issues/16008).
-      self.assertEqual(costs["flops_compiled"], flops_ref)
-
   def test_gaussian(self):
     rng = jax.random.PRNGKey(0)
     data = jax.random.normal(rng, (100,))

@@ -15,9 +15,8 @@
 
 # pylint: disable=invalid-name,g-importing-member,g-import-not-at-top
 
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
-from absl import logging
 from flax.struct import dataclass
 import jax
 import jax.numpy as jnp
@@ -35,12 +34,10 @@ PyTree = Any
 
 
 def get_init_metrics(
-    step_fn: Callable[["TrainState", jax.Array], "TrainState"],
     state: "TrainState",
-    in_BxL: jax.Array,
 ) -> dict[str, float | int]:
   """Compute metrics only at init, as they are constant throughout training."""
-  metrics = _get_costs(step_fn, state, in_BxL)
+  metrics = {}
 
   n_params_all = _size(state.params)
 
@@ -218,41 +215,6 @@ def _counts_from_tree(g: PyTree) -> dict[str, int]:
 def _tree_to_dict(prefix: str, g: PyTree) -> dict[str, Any]:
   return {prefix + "_".join(z.key for z in k if hasattr(z, "key")): v
           for k, v in jax.tree_util.tree_leaves_with_path(g)}
-
-
-def _get_costs(f, *args, **kwargs) -> dict[str, float]:
-  """Compute FLOPS cost of evaluating `f(*args, **kwargs)`.
-
-  WARNING: `flops_compiled` are returned as `-1` on GPU:
-  https://github.com/google/jax/issues/16008, and in general are unreliable on
-  CPU/GPU: http://b/202218145.
-
-  Args:
-    f: JITtable function.
-    *args: args for `f`.
-    **kwargs: kwargs for `f`.
-
-  Returns:
-    FLOPS cost of evaluating `f(*args, **kwargs)`.
-  """
-  e = jax.jit(f).lower(*args, **kwargs)
-  cost_lowered = e.cost_analysis()
-
-  try:
-    cost_compiled = e.compile().cost_analysis()[0]
-  except jax.interpreters.xla.xc.XlaRuntimeError as e:
-    logging.exception(e)
-    cost_compiled = {}
-
-  costs = {}
-  # Note that `bytes accessed_lowered` is very bloated since read-write
-  # operations overlap a lot.
-  for k in ["flops", "bytes accessed"]:
-    costs[k + "_lowered"] = cost_lowered[k]
-    if k in cost_compiled:
-      costs[k + "_compiled"] = cost_compiled[k]
-
-  return costs
 
 
 def _size(g: PyTree) -> int:
