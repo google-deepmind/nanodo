@@ -61,7 +61,9 @@ python nanodo/main.py \
   --config.workdir=/tmp/nanodo_workdir \
   --config.vocab_path=tests/testdata/sentencepiece_cc_all.32000.100extra-sentencepiece.model \
   --config.model.L=128 \
-  --config.batch_size=2
+  --config.batch_size=2 \
+  --config.pygrain_worker_count=0 \
+  2> stderr.log
 ```
 
 Then point your [Tensorboard](https://github.com/tensorflow/tensorboard) to the workdir:
@@ -69,6 +71,8 @@ Then point your [Tensorboard](https://github.com/tensorflow/tensorboard) to the 
 ```
   tensorboard --logdir /tmp/nanodo_workdir
 ```
+
+If input-bound, try adjusting `config=pygrain_worker_count` to enable pygrain multi-processing.
 
 To use accelerators, ensure the appropriate JAX package is installed by following these [instructions](https://jax.readthedocs.io/en/latest/installation.html).
 
@@ -91,7 +95,7 @@ To cite this repository:
 ```
 
 
-Authors all performed work while at Google Brain / DeepMind. We also thank Anselm Levskaya, and Gellért Weisz for code suggestions, and  Noah Fiedel for project support.
+Authors all performed work while at Google Brain / DeepMind. We also acknowledge the help of Anselm Levskaya, Gellért Weisz, Xinyang Geng, Yotam Doron, and Noah Fiedel.
 
 The first published paper to use (a fork of) the library was:
 
